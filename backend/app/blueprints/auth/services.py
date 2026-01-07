@@ -90,6 +90,8 @@ def set_user_password(payload: dict):
         new_value="password_hash_changed"
     )
 
+    db.session.commit()
+
     return {"message": "Password updated successfully"}, 200
 
 

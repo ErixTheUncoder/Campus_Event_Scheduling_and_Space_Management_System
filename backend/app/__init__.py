@@ -56,8 +56,8 @@ def create_app():
     from .blueprints.auth.routes import auth_bp
     from .blueprints.venues.routes import venues_bp
     from .blueprints.availability.routes import availability_bp
-    from .blueprints.bookings.routes import bookings_bp
-    from .blueprints.events.routes import events_bp
+    from .blueprints.booking_request.routes import booking_requests_bp 
+    from .blueprints.event_request.routes import event_requests_bp
     from .blueprints.venue_requests.routes import venue_requests_bp
     from .blueprints.notifications.routes import notifications_bp
     from .blueprints.audit.routes import audit_bp
@@ -65,8 +65,8 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(venues_bp, url_prefix="/api/venues")
     app.register_blueprint(availability_bp, url_prefix="/api/availability")
-    app.register_blueprint(bookings_bp, url_prefix="/api/bookings")
-    app.register_blueprint(events_bp, url_prefix="/api/events")
+    app.register_blueprint(booking_requests_bp, url_prefix="/api/booking-requests")
+    app.register_blueprint(event_requests_bp, url_prefix="/api/event-requests")
     app.register_blueprint(venue_requests_bp, url_prefix="/api/venue-requests")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
