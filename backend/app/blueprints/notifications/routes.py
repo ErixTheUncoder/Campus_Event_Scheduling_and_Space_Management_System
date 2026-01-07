@@ -1,23 +1,22 @@
-from flask import request, jsonify
+from flask import jsonify, request
 from . import notifications_bp
+from .services import get_user_notifications, mark_notification_as_read
+
 
 @notifications_bp.get("/")
 def list_notifications():
     """
-    Student/Admin/Organiser: View notifications (stub).
-    Example: /api/notifications?user_id=10&unread=true
+    GET /api/notifications/?user_id=1
     """
-    params = {
-        "user_id": request.args.get("user_id", type=int),
-        "unread": request.args.get("unread"),
-        "page": request.args.get("page", default=1, type=int),
-        "page_size": request.args.get("page_size", default=20, type=int),
-    }
-    return jsonify({"message": "list notifications (stub)", "params": params}), 200
+    user_id = request.args.get("user_id", type=int)
+    if not user_id:
+        return {"error": "user_id is required"}, 400
+
+    data = get_user_notifications(user_id)
+    return jsonify(data), 200
+
 
 @notifications_bp.patch("/<int:notification_id>/read")
-def mark_notification_read(notification_id: int):
-    """
-    Mark a notification as read (stub).
-    """
-    return jsonify({"message": "mark notification read (stub)", "notification_id": notification_id}), 200
+def read_notification(notification_id):
+    resp, code = mark_notification_as_read(notification_id)
+    return jsonify(resp), code

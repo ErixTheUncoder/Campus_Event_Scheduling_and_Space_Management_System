@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, app
 from dotenv import load_dotenv
 import os
 
@@ -17,12 +17,35 @@ def create_app():
 
     app = Flask(__name__)
 
+    @app.get("/")
+    def home():
+        return {
+            "message": "Backend is running",
+            "endpoints": [
+                "/api/auth",
+                "/api/venues",
+                "/api/availability",
+                "/api/bookings",
+                "/api/events",
+                "/api/venue-requests",
+                "/api/notifications",
+                "/api/audit"
+            ]
+        }, 200
+
+
     # Select config based on environment
     env = os.getenv("FLASK_ENV", "development").lower()
     if env == "production":
         app.config.from_object(ProductionConfig)
+
+        if not app.config.get("SQLALCHEMY_DATABASE_URI"):
+            raise RuntimeError("DATABASE_URL must be set in production")
+        
     else:
         app.config.from_object(DevelopmentConfig)
+
+    print("DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
     # Initialize extensions
     db.init_app(app)
@@ -47,5 +70,9 @@ def create_app():
     app.register_blueprint(venue_requests_bp, url_prefix="/api/venue-requests")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
+
+    with app.app_context():
+        from . import models
+        db.create_all()
 
     return app
