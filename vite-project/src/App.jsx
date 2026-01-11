@@ -4,12 +4,15 @@ import Header from './component/Header';
 import Sidebar from './component/Sidebar';
 import DashboardContent from './component/DashboardContent';'./component/DashboardContent';
 import PlaceholderContent from  './component/PlaceholderContent';
+import LoginForm from './component/login';
 
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  return (
+  if(isLoggedIn){
+    return (
     <div className="app-container">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
@@ -21,7 +24,18 @@ function App() {
         </div>
       </div>
     </div>
-  );
+  )
 }
+  else{
+    return(
+      <div className='loginBackground'>
+        <LoginForm />
+      </div>
+    );
+  }
+}
+
+  
+
 
 export default App;
