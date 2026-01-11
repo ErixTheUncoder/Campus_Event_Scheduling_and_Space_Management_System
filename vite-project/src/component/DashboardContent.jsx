@@ -1,3 +1,6 @@
+import StatCard from './StatCard';       // (Adjust path if needed)
+import BookingTable from './BookingTable'; // (Adjust path if needed)
+
 const DashboardContent = () => {
   return (
     <>

@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import './App.css';
-import './component/Header';
+import Header from './component/Header';
+import Sidebar from './component/Sidebar';
+import DashboardContent from './component/DashboardContent';'./component/DashboardContent';
+import PlaceholderContent from  './component/PlaceholderContent';
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -19,10 +23,5 @@ function App() {
     </div>
   );
 }
-
-/* --- Sub-Components --- */
-
-
-
 
 export default App;
