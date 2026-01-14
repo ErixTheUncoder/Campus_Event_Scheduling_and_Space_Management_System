@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 
 from .extensions import db
+from flask_migrate import Migrate
 from .config import DevelopmentConfig, ProductionConfig
 
 
@@ -47,8 +48,14 @@ def create_app():
 
     print("DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "connect_args": {"prepare_threshold": 0}
+    }
+
+
     # Initialize extensions
     db.init_app(app)
+    Migrate(app, db)
 
     # -----------------------
     # Register blueprints
@@ -73,6 +80,6 @@ def create_app():
 
     with app.app_context():
         from . import models
-        db.create_all()
+        # db.create_all()
 
     return app

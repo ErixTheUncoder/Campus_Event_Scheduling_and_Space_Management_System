@@ -5,13 +5,79 @@ from ...models.user import User
 
 def register_user(payload: dict):
     full_name = (payload.get("full_name") or "").strip()
-    user_role = (payload.get("user_role") or "").strip()
     email = (payload.get("email") or "").strip().lower()
     phone_number = (payload.get("phone_number") or "").strip()
     password = payload.get("password") or ""
 
-    if not full_name or not user_role or not email or not password:
-        return {"error": "full_name, user_role, email, password are required"}, 400
+    # Force role for self-register
+    user_role = "STUDENT"
+
+    # Updated validation (no user_role required)
+    if not full_name or not email or not password:
+        return {"error": "full_name, email, password are required"}, 400
+
+    if User.query.filter_by(email=email).first():
+        return {"error": "Email already registered"}, 409
+    
+    if not phone_number:
+        return {"error": "phone_number is required"}, 400
+
+
+    hashed_password = generate_password_hash(password)
+
+    user = User(
+        full_name=full_name,
+        user_role=user_role,   # always STUDENT
+        email=email,
+        phone_number=phone_number if phone_number else None,
+        password=hashed_password
+    )
+
+    db.session.add(user)
+    db.session.commit()
+
+    log_action(
+        user_id=user.user_id,
+        action_type="REGISTER",
+        entity_type="User",
+        entity_id=user.user_id,
+        new_value=f"User {user.email} registered as STUDENT"
+    )
+
+    db.session.commit()
+
+    return {"message": "User registered", "user": user.to_dict()}, 201
+
+
+import os
+
+def register_user_admin(payload: dict):
+    """
+    Admin/testing only: allow setting role by providing admin key.
+    """
+    admin_key = (payload.get("admin_key") or "").strip()
+    expected_key = (os.getenv("ADMIN_REGISTER_KEY") or "").strip()
+
+    if not expected_key:
+        return {"error": "ADMIN_REGISTER_KEY not set on server"}, 500
+
+    if not admin_key or admin_key != expected_key:
+        return {"error": "Forbidden"}, 403
+
+    full_name = (payload.get("full_name") or "").strip()
+    email = (payload.get("email") or "").strip().lower()
+    phone_number = (payload.get("phone_number") or "").strip()
+    password = payload.get("password") or ""
+
+    # role allowed only in this admin function
+    user_role = (payload.get("user_role") or "").strip().upper()
+
+    allowed_roles = {"STUDENT", "EVENT_ORGANIZER", "COORDINATOR", "STAFF"}
+    if user_role not in allowed_roles:
+        return {"error": f"Invalid user_role. Allowed: {sorted(list(allowed_roles))}"}, 400
+
+    if not full_name or not email or not password:
+        return {"error": "full_name, email, password are required"}, 400
 
     if User.query.filter_by(email=email).first():
         return {"error": "Email already registered"}, 409
@@ -31,15 +97,15 @@ def register_user(payload: dict):
 
     log_action(
         user_id=user.user_id,
-        action_type="REGISTER",
+        action_type="REGISTER_ADMIN",
         entity_type="User",
         entity_id=user.user_id,
-        new_value=f"User {user.email} registered"
+        new_value=f"Admin registered {user.email} as {user_role}"
     )
 
     db.session.commit()
 
-    return {"message": "User registered", "user": user.to_dict()}, 201
+    return {"message": "User registered (admin)", "user": user.to_dict()}, 201
 
 
 def login_user(payload: dict):

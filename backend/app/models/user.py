@@ -16,7 +16,7 @@ class User(db.Model):
     full_name = db.Column(db.String(120), nullable=False)
     user_role = db.Column(db.Enum(UserRole), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    phone_number = db.Column(db.String(30), nullable=True)
+    phone_number = db.Column(db.String(30), nullable=False)
     password = db.Column(db.String(255), nullable=False)              # store hashed password
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
