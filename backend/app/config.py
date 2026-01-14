@@ -26,5 +26,5 @@ class ProductionConfig(BaseConfig):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
-    if not SQLALCHEMY_DATABASE_URI:
-        raise RuntimeError("DATABASE_URL must be set in production")
+    # if not SQLALCHEMY_DATABASE_URI:
+    #     raise RuntimeError("DATABASE_URL must be set in production")
