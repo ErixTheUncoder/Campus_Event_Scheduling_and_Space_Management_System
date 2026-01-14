@@ -1,49 +1,71 @@
 import { useState } from 'react';
 
-// 1. We receive 'onLogin' here
-function LoginForm({ onLogin }){ 
+function LoginForm({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
-      e.preventDefault(); 
-      // 2. We use the prop to tell App.js to switch tabs
-      onLogin(true); 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Login failed");
+        return;
+      }
+
+      // Backend returns: { message, user }
+      onLoginSuccess(data.user);
+    } catch (err) {
+      setError("Cannot connect to backend. Is Flask running?");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return(
-      <div className='loginBody'>
-        {/* The form handles the submit event */}
-        <form onSubmit={handleLogin}>
-          <input 
-            className='emailTextbox'
-            type='text' 
-            placeholder='University email'
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+  return (
+    <div className='loginBody'>
+      <form onSubmit={handleSubmit}>
+        <input
+          className='emailTextbox'
+          type='text'
+          placeholder='University email'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-          <input 
-            className='passwordTextbox'
-            type='password'
-            placeholder='Password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          
-          <br/>
+        <br />
 
-          {/* 3. Removed onClick here. The form's onSubmit handles it now. */}
-          <button type='submit' className='submitButton'>Log In</button>
-          
-          <br/>
-          {/* If you keep this button, it must also use onLogin, not isLoggedIn */}
-          <button type="button" onClick={() => onLogin(true)}>
-            Click me to view dashboard
-          </button>
-        </form>
-      </div>
-  )
+        <input
+          className='passwordTextbox'
+          type='password'
+          placeholder='Password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <br />
+
+        {error && <p style={{ color: "salmon" }}>{error}</p>}
+
+        <button type='submit' className='submitButton' disabled={loading}>
+          {loading ? "Logging in..." : "Log In"}
+        </button>
+      </form>
+    </div>
+  );
 }
 
 export default LoginForm;
