@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1"
+  },
+  "dependencies": {
+    "vite-plugin-babel": "^1.4.1"
+  }
+}
