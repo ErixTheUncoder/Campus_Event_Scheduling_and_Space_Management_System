@@ -15,7 +15,6 @@ function LoginForm(){
           onChange={(e) => setEmail(e.target.value)}
           />
 
-          <br/>
 
           {/* Input for password */}
           <input 
@@ -29,6 +28,8 @@ function LoginForm(){
           <br/>
 
           <button type='submit' className='submitButton'>Log In</button>
+          <br/>
+          <button onClick={()=>setIsLoggedIn(true)}>Click me to view dashboard</button>
         </form>
       </div>
   )
