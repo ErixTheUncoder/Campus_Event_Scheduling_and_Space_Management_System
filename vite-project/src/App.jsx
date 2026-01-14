@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './App.css';
 import Header from './component/Header';
 import Sidebar from './component/Sidebar';
-import DashboardContent from './component/DashboardContent';'./component/DashboardContent';
+import DashboardContent from './component/DashboardContent';
 import PlaceholderContent from  './component/PlaceholderContent';
 import LoginForm from './component/login';
 
@@ -29,7 +29,7 @@ function App() {
   else{
     return(
       <div className='loginBackground'>
-        <LoginForm />
+        <LoginForm onLogin={setIsLoggedIn} />
       </div>
     );
   }
