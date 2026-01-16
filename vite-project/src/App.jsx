@@ -8,7 +8,7 @@ import PlaceholderContent from './component/PlaceholderContent';
 import LoginForm from './component/login';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({name: "Admin"});
 
   return (
     <Routes>
