@@ -8,7 +8,7 @@ import LoginForm from './component/login';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(true);
 
   const isLoggedIn = !!user;
 
