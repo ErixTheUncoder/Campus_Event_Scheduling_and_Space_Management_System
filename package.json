@@ -4,6 +4,7 @@
     "eslint-plugin-react-hooks": "^7.0.1"
   },
   "dependencies": {
+    "react-router-dom": "^7.12.0",
     "vite-plugin-babel": "^1.4.1"
   }
 }

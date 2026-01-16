@@ -1,37 +1,44 @@
 import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom'; // Import Route tools
 import './App.css';
-import Header from './component/Header';
-import Sidebar from './component/Sidebar';
+
+import Layout from './component/Layout';
 import DashboardContent from './component/DashboardContent';
 import PlaceholderContent from './component/PlaceholderContent';
 import LoginForm from './component/login';
+import Events from './component/Events';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('Dashboard');
-  const [user, setUser] = useState(null);
-
-  const isLoggedIn = !!user;
-
-  if (isLoggedIn) {
-    return (
-      <div className="app-container">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-
-        <div className="main-content">
-          <Header title={activeTab} />
-          <div className="dashboard-view">
-            {activeTab === 'Dashboard' && <DashboardContent user={user} />}
-            {activeTab !== 'Dashboard' && <PlaceholderContent title={activeTab} />}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const [user, setUser] = useState({name: "Admin"});
 
   return (
-    <div className="loginBackground">
-      <LoginForm onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />
-    </div>
+    <Routes>
+      {/* 1. Public Route: Login */}
+      <Route 
+        path="/login" 
+        element={
+          user ? <Navigate to="/dashboard" replace /> : 
+          <div className="loginBackground">
+            <LoginForm onLoginSuccess={(u) => setUser(u)} />
+          </div>
+        } 
+      />
+
+      {/* 2. Protected Routes (Wrapped in Layout) */}
+      <Route element={user ? <Layout user={user} /> : <Navigate to="/login" replace />}>
+        
+        {/* Redirect root "/" to Dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* Actual Pages */}
+        <Route path="/dashboard" element={<DashboardContent />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/venues" element={<PlaceholderContent title="Venues" />} />
+        <Route path="/approvals" element={<PlaceholderContent title="Approvals" />} />
+        <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
+        
+      </Route>
+    </Routes>
   );
 }
 
