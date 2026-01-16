@@ -6,6 +6,7 @@ import Layout from './component/Layout';
 import DashboardContent from './component/DashboardContent';
 import PlaceholderContent from './component/PlaceholderContent';
 import LoginForm from './component/login';
+import Events from './component/Events';
 
 function App() {
   const [user, setUser] = useState({name: "Admin"});
@@ -31,7 +32,7 @@ function App() {
         
         {/* Actual Pages */}
         <Route path="/dashboard" element={<DashboardContent />} />
-        <Route path="/events" element={<PlaceholderContent title="Events" />} />
+        <Route path="/events" element={<Events />} />
         <Route path="/venues" element={<PlaceholderContent title="Venues" />} />
         <Route path="/approvals" element={<PlaceholderContent title="Approvals" />} />
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />

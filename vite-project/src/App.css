@@ -25,13 +25,17 @@ body {
   height: 100vh;
   width: 100vw;
   overflow: hidden; /* Prevent body scroll, let main content scroll */
+  margin: 0;
+  padding: 0;
+  /* Optional but recommended: ensures padding doesn't increase width */
+  box-sizing: border-box;
 }
 
 /* Layout Container */
 .app-container {
   display: flex;
   height: 100vh;
-  width: 100%;
+  width: 100vw;
 }
 
 /* Sidebar */
@@ -43,6 +47,13 @@ body {
   flex-direction: column;
   padding: 1.5rem;
   flex-shrink: 0;
+}
+
+/* Target the nav element inside the sidebar */
+.sidebar nav {
+  display: flex;           /* Enables flexbox context */
+  flex-direction: column;  /* 1. Stacks items vertically (down) */
+  gap: 1rem;               /* 2. Adds meaningful space between items */
 }
 
 .brand {
@@ -218,6 +229,7 @@ th {
 }
 
 .loginBody button{
-  align-items: center;
+align-items: center;
   justify-self: center;
 }
+

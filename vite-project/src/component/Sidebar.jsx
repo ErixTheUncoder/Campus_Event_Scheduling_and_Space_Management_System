@@ -15,12 +15,12 @@ const Sidebar = () => {
       <div className="brand">Campus Scheduler</div>
       <nav>
         {menu.map(item => (
-          <NavLink 
+          <NavLink
             key={item.name}
             to={item.path}
             // NavLink automatically provides 'isActive' to style the selected tab
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''} navbar`}
+            >
             {item.name}
           </NavLink>
         ))}
