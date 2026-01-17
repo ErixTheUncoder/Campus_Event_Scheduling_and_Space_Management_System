@@ -1,8 +1,8 @@
 function Events(){
   return(
     <>
-    <div className="">
-      test
+    <div className="table-container">
+      
     </div>
     </>
   )
