@@ -7,9 +7,10 @@ import DashboardContent from './component/DashboardContent';
 import PlaceholderContent from './component/PlaceholderContent';
 import LoginForm from './component/login';
 import Events from './component/Events';
+import AddEventForm from './component/AddEventForm';
 
 function App() {
-  const [user, setUser] = useState({name: "Admin"});
+  const [user, setUser] = useState("Admin");//CHANGE TO null FOR LOGIN PAGE
 
   return (
     <Routes>
@@ -32,7 +33,8 @@ function App() {
         
         {/* Actual Pages */}
         <Route path="/dashboard" element={<DashboardContent />} />
-        <Route path="/events" element={<Events />} />
+        <Route path="/events" element={<Events />}/>
+        <Route path='/events/add' element={<AddEventForm/>} />
         <Route path="/venues" element={<PlaceholderContent title="Venues" />} />
         <Route path="/approvals" element={<PlaceholderContent title="Approvals" />} />
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
