@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-const EventRequestList = () => {
+function EventRequestList(){
+  const bookings = [
+    { id: 1, event: 'Hackathon 2024', location: 'Main Hall', date: '2024-12-25', status: 'Confirmed' },
+    { id: 2, event: 'CS Club Meetup', location: 'Lab 3', date: '2024-12-26', status: 'Pending' },
+    { id: 3, event: 'Exam Prep', location: 'Library Room A', date: '2024-12-27', status: 'Confirmed' },
+    { id: 4, event: 'Staff Meeting', location: 'Conf Room B', date: '2024-12-28', status: 'Pending' },
+    { id: 5, event: 'Staff Meeting', location: 'Conf Room B', date: '2024-12-28', status: 'Rejected' },
+  ];
   // 1. Prepare the memory (State)
-  const [EventRequest, setEventRequest] = useState([]);
+  const [EventRequest, setEventRequest] = useState(bookings); //TEMPORARY VALUE
 
 
   // 2. The Trigger (Effect)
@@ -54,15 +61,32 @@ useEffect(() => {
   }, []); // <--- The empty array means "run only once on mount"
 
   return (
-    <div>
-      <h1>Event Requests</h1>
+    <>
+      <table>  
+      <tr>
+        <th>Event Name</th>
+        <th>Location</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
       {/* 3. The Map */}
       {EventRequest.map((req) => (
         // TODO: What do you want to display for each request?
-        <div key={req.id}>
-           {req.viewer_id}
-        </div>
+        <tr key={req.id}>
+          <td>{req.event}</td> 
+          <td>{req.location}</td> 
+          <td>{req.date}</td> 
+          <td>
+           
+            <span className={`badge ${req.status.toLowerCase()}`}>
+                {req.status}
+              </span>
+              </td> 
+        </tr>
       ))}
-    </div>
+      </table>
+  </>
   );
 };
+
+export default EventRequestList;

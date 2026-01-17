@@ -9,7 +9,7 @@ import LoginForm from './component/login';
 import Events from './component/Events';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState("Admin");
 
   return (
     <Routes>
