@@ -68,8 +68,36 @@ def create_venue(payload: dict):
     return {"message": "Venue created", "venue": v.to_dict()}, 201
 
 
-def list_venues():
-    venues = Venue.query.order_by(Venue.venue_id.asc()).all()
+def list_venues(filters: dict | None = None):
+    query = Venue.query
+
+    if filters:
+        venue_type = filters.get("venue_type")
+        location = filters.get("location")
+        min_capacity = filters.get("min_capacity")
+
+        if venue_type:
+            try:
+                query = query.filter(
+                    Venue.venue_type == VenueType[venue_type]
+                )
+            except KeyError:
+                return {
+                    "error": "Invalid venue_type",
+                    "allowed": [v.name for v in VenueType]
+                }, 400
+
+        if location:
+            query = query.filter(
+                Venue.location.ilike(f"%{location}%")
+            )
+
+        if min_capacity is not None:
+            query = query.filter(
+                Venue.capacity >= min_capacity
+            )
+
+    venues = query.order_by(Venue.venue_id.asc()).all()
     return {"venues": [v.to_dict() for v in venues]}, 200
 
 

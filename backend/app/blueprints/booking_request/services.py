@@ -3,6 +3,7 @@ import json
 
 from ...extensions import db
 from ...models.booking_request import BookingRequest, BookingStatus
+from ...models.venue_availability import VenueAvailability
 from ...models.user import User, UserRole
 from ..audit.services import log_action
 
@@ -19,9 +20,13 @@ def _require_admin(admin_id: int):
 def create_booking_request(payload: dict):
     """
     STUDENT only.
+
     Required:
-      user_id, booking_date(YYYY-MM-DD), venue_available_id
+    - user_id
+    - booking_date (YYYY-MM-DD)
+    - venue_available_id
     """
+
     try:
         user_id = int(payload.get("user_id"))
     except (TypeError, ValueError):
@@ -31,16 +36,11 @@ def create_booking_request(payload: dict):
     if not user:
         return {"error": "User not found"}, 404
 
-    # ✅ RBAC: Only STUDENT can create booking request
     if user.user_role != UserRole.STUDENT:
-        return {"error": "Forbidden: Only Students can create booking requests"}, 403
+        return {"error": "Forbidden: Only students can create booking requests"}, 403
 
+    #  validate booking date
     booking_date_str = (payload.get("booking_date") or "").strip()
-    try:
-        venue_available_id = int(payload.get("venue_available_id"))
-    except (TypeError, ValueError):
-        return {"error": "venue_available_id is required and must be an integer"}, 400
-
     if not booking_date_str:
         return {"error": "booking_date is required (YYYY-MM-DD)"}, 400
 
@@ -49,6 +49,36 @@ def create_booking_request(payload: dict):
     except ValueError:
         return {"error": "Invalid booking_date format. Use YYYY-MM-DD"}, 400
 
+    # validate venue availability ID ----
+    try:
+        venue_available_id = int(payload.get("venue_available_id"))
+    except (TypeError, ValueError):
+        return {"error": "venue_available_id is required and must be an integer"}, 400
+
+    availability = VenueAvailability.query.get(venue_available_id)
+    if not availability:
+        return {"error": "Venue availability not found"}, 404
+
+    # availability integrity checks
+    if availability.date != booking_date:
+        return {"error": "Booking date does not match venue availability date"}, 400
+
+    if not availability.is_available:
+        return {"error": "Selected venue slot is not available"}, 409
+
+    # prevent double booking (safety check)
+    existing = BookingRequest.query.filter(
+        BookingRequest.venue_available_id == venue_available_id,
+        BookingRequest.status.in_([
+            BookingStatus.PENDING,
+            BookingStatus.APPROVED
+        ])
+    ).first()
+
+    if existing:
+        return {"error": "This venue slot has already been requested or booked"}, 409
+
+    # create booking request
     booking = BookingRequest(
         booking_date=booking_date,
         user_id=user_id,
@@ -60,9 +90,12 @@ def create_booking_request(payload: dict):
     )
 
     db.session.add(booking)
-    db.session.flush()  # assigns booking.booking_id
+    db.session.flush()  # assigns booking_id
 
-    # AUDIT
+    # soft block availability (IMPORTANT)
+    availability.is_available = False
+
+    # audit log
     log_action(
         user_id=user_id,
         action_type="BOOKING_REQUEST_SUBMITTED",
@@ -71,12 +104,15 @@ def create_booking_request(payload: dict):
         new_value=json.dumps({
             "booking_date": booking_date_str,
             "venue_available_id": venue_available_id,
-            "status": "Pending"
+            "status": "PENDING"
         })
     )
 
     db.session.commit()
-    return {"message": "Booking request created", "booking_request": booking.to_dict()}, 201
+    return {
+        "message": "Booking request created",
+        "booking_request": booking.to_dict()
+    }, 201
 
 
 def list_booking_requests(viewer_id: int | None, status: str | None = None):
@@ -89,21 +125,21 @@ def list_booking_requests(viewer_id: int | None, status: str | None = None):
 
     q = BookingRequest.query
 
-    # ✅ Visibility rules
     if viewer.user_role == UserRole.ADMIN:
-        pass  # admin sees all
+        pass
     elif viewer.user_role == UserRole.STUDENT:
         q = q.filter(BookingRequest.user_id == viewer.user_id)
     else:
         return {"error": "Forbidden"}, 403
 
-    # optional status filter
     if status:
-        status = status.strip().upper()
         try:
-            status_enum = BookingStatus[status]
+            status_enum = BookingStatus[status.strip().upper()]
         except KeyError:
-            return {"error": "Invalid status", "allowed": [s.name for s in BookingStatus]}, 400
+            return {
+                "error": "Invalid status",
+                "allowed": [s.name for s in BookingStatus]
+            }, 400
         q = q.filter(BookingRequest.status == status_enum)
 
     items = q.order_by(BookingRequest.request_date_time.desc()).all()
@@ -132,10 +168,6 @@ def get_booking_request(booking_id: int, viewer_id: int | None):
 
 
 def decide_booking_request(booking_id: int, payload: dict):
-    """
-    ADMIN only decision:
-      admin_id, decision=APPROVED/REJECTED, admin_comment(optional)
-    """
     booking = BookingRequest.query.get(booking_id)
     if not booking:
         return {"error": "Booking request not found"}, 404
@@ -156,20 +188,25 @@ def decide_booking_request(booking_id: int, payload: dict):
         return {"error": "decision must be APPROVED or REJECTED"}, 400
 
     old_state = {
-        "status": booking.status.value if booking.status else None,
-        "admin_comment": booking.admin_comment,
-        "approval_date_time": booking.approval_date_time.isoformat() if booking.approval_date_time else None
-    }
-
-    booking.status = BookingStatus.APPROVED if decision == "APPROVED" else BookingStatus.REJECTED
-    booking.admin_comment = (admin_comment or "").strip() or None
-    booking.approval_date_time = datetime.utcnow()
-
-    new_state = {
         "status": booking.status.value,
         "admin_comment": booking.admin_comment,
         "approval_date_time": booking.approval_date_time.isoformat()
+        if booking.approval_date_time else None
     }
+
+    booking.status = (
+        BookingStatus.APPROVED
+        if decision == "APPROVED"
+        else BookingStatus.REJECTED
+    )
+    booking.admin_comment = (admin_comment or "").strip() or None
+    booking.approval_date_time = datetime.utcnow()
+
+    # ---- Release availability if rejected ----
+    if booking.status == BookingStatus.REJECTED:
+        availability = VenueAvailability.query.get(booking.venue_available_id)
+        if availability:
+            availability.is_available = True
 
     log_action(
         user_id=admin.user_id,
@@ -177,11 +214,19 @@ def decide_booking_request(booking_id: int, payload: dict):
         entity_type="BookingRequest",
         entity_id=booking.booking_id,
         old_value=json.dumps(old_state),
-        new_value=json.dumps(new_state)
+        new_value=json.dumps({
+            "status": booking.status.value,
+            "admin_comment": booking.admin_comment,
+            "approval_date_time": booking.approval_date_time.isoformat()
+        })
     )
 
     db.session.commit()
-    return {"message": f"Booking request {decision.lower()}", "booking_request": booking.to_dict()}, 200
+    return {
+        "message": f"Booking request {decision.lower()}",
+        "booking_request": booking.to_dict()
+    }, 200
+
 
 
 def cancel_booking_request(booking_id: int, payload: dict):
@@ -190,31 +235,50 @@ def cancel_booking_request(booking_id: int, payload: dict):
         return {"error": "Booking request not found"}, 404
 
     try:
-        student_id = int(payload.get("user_id"))
+        admin_id = int(payload.get("admin_id"))
     except (TypeError, ValueError):
-        return {"error": "user_id is required"}, 400
+        return {"error": "admin_id is required"}, 400
 
-    student = User.query.get(student_id)
-    if not student or student.user_role != UserRole.STUDENT:
-        return {"error": "Forbidden"}, 403
+    admin, err = _require_admin(admin_id)
+    if err:
+        return err
 
-    if booking.user_id != student.user_id:
-        return {"error": "Forbidden"}, 403
+    if booking.status != BookingStatus.APPROVED:
+        return {"error": "Only approved bookings can be cancelled"}, 400
 
-    if booking.status != BookingStatus.PENDING:
-        return {"error": "Only pending bookings can be cancelled"}, 400
+    admin_comment = (payload.get("admin_comment") or "").strip()
+    if not admin_comment:
+        return {"error": "admin_comment is required for cancellation"}, 400
 
-    booking.status = BookingStatus.CANCELLED
+    old_state = {
+        "status": booking.status.value,
+        "admin_comment": booking.admin_comment,
+        "approval_date_time": booking.approval_date_time.isoformat()
+        if booking.approval_date_time else None
+    }
+
+    # 🔴 Cancel = force reject
+    booking.status = BookingStatus.REJECTED
+    booking.admin_comment = admin_comment
+    booking.approval_date_time = datetime.utcnow()
+
+    # 🔓 Release availability
+    availability = VenueAvailability.query.get(booking.venue_available_id)
+    if availability:
+        availability.is_available = True
 
     log_action(
-        user_id=student.user_id,
-        action_type="BOOKING_REQUEST_CANCELLED",
+        user_id=admin.user_id,
+        action_type="BOOKING_REQUEST_CANCELLED_BY_ADMIN",
         entity_type="BookingRequest",
         entity_id=booking.booking_id,
-        old_value="PENDING",
-        new_value="CANCELLED"
+        old_value=json.dumps(old_state),
+        new_value=json.dumps({
+            "status": booking.status.value,
+            "admin_comment": booking.admin_comment,
+            "approval_date_time": booking.approval_date_time.isoformat()
+        })
     )
 
     db.session.commit()
-    return {"message": "Booking request cancelled"}, 200
-
+    return {"message": "Booking request cancelled by admin"}, 200

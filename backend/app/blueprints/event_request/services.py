@@ -3,6 +3,7 @@ import json
 
 from ...extensions import db
 from ...models.event_request import EventRequest, EventRequestStatus
+from ...models.venue_request import VenueRequest, VenueRequestStatus
 from ..audit.services import log_action
 from ...models.user import User, UserRole
 
@@ -45,12 +46,12 @@ def create_event_request(payload: dict):
     event_date_str = (payload.get("event_date") or "").strip()
     start_time_str = (payload.get("start_time") or "").strip()
     end_time_str = (payload.get("end_time") or "").strip()
+    purpose = (payload.get("purpose") or "").strip()
 
-    purpose = payload.get("purpose")
-    documents = payload.get("documents")  # optional (can be None)
+    documents = payload.get("documents")  # optional
 
-    if not event_name or not event_date_str or not start_time_str or not end_time_str:
-        return {"error": "event_name, event_date, start_time, end_time are required"}, 400
+    if not event_name or not event_date_str or not start_time_str or not end_time_str or not purpose:
+        return {"error": "event_name, event_date, start_time, end_time, and purpose are required"}, 400
 
     try:
         event_date = _parse_date(event_date_str)
@@ -197,6 +198,19 @@ def decide_event_request(event_id: int, payload: dict):
         "admin_comment": req.admin_comment,
         "approval_date_time": req.approval_date_time.isoformat() if req.approval_date_time else None
     }
+
+    # at least one APPROVED venue_request
+    if decision == "APPROVED":
+        approved_venues_count = VenueRequest.query.filter(
+            VenueRequest.event_id == req.event_id,
+            VenueRequest.status == VenueRequestStatus.APPROVED
+        ).count()
+
+        if approved_venues_count < 1:
+            return {
+                "error": "Event cannot be approved without at least one approved venue request"
+            }, 400
+
 
     req.status = EventRequestStatus.APPROVED if decision == "APPROVED" else EventRequestStatus.REJECTED
     req.admin_comment = (admin_comment or "").strip() or None
