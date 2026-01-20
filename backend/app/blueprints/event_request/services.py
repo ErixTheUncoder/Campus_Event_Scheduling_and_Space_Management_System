@@ -251,6 +251,53 @@ def decide_event_request(event_id: int, payload: dict):
     return {"message": f"Event request {decision.lower()}", "event_request": req.to_dict()}, 200
 
 
+def get_event_calendar(viewer_id: int, role: str):
+    from ...models.event_request import EventRequest, EventRequestStatus
+    from ...models.venue_request import VenueRequest, VenueRequestStatus
+    from ...models.venue import Venue
+    from ...models.user import User
+
+    viewer = User.query.get(viewer_id)
+    if not viewer:
+        return {"error": "Viewer not found"}, 404
+
+    q = EventRequest.query.filter(
+        EventRequest.status == EventRequestStatus.APPROVED
+    )
+
+    # EO sees only own events
+    if role == "EO":
+        q = q.filter(EventRequest.user_id == viewer_id)
+
+    events = q.all()
+    calendar_items = []
+
+    for e in events:
+        venue_reqs = VenueRequest.query.filter(
+            VenueRequest.event_id == e.event_id,
+            VenueRequest.status == VenueRequestStatus.APPROVED
+        ).all()
+
+        venues = [
+            Venue.query.get(vr.venue_id).venue_name
+            for vr in venue_reqs
+        ]
+
+        calendar_items.append({
+            "id": f"event-{e.event_id}",
+            "type": "EVENT",
+            "title": e.event_name,
+            "date": e.event_date.isoformat(),
+            "start_time": e.start_time.strftime("%H:%M"),
+            "end_time": e.end_time.strftime("%H:%M"),
+            "venues": venues,
+            "status": e.status.value,
+            "owner_id": e.user_id
+        })
+
+    return {"calendar": calendar_items}, 200
+
+
 def delete_event_request(event_id: int, payload: dict | None = None):
     """
     Optional: allow requester/admin delete

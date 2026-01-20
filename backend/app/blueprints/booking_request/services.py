@@ -228,6 +228,45 @@ def decide_booking_request(booking_id: int, payload: dict):
     }, 200
 
 
+def get_booking_calendar(viewer_id: int, role: str):
+    from ...models.booking_request import BookingRequest, BookingStatus
+    from ...models.venue_availability import VenueAvailability
+    from ...models.venue import Venue
+    from ...models.user import User
+
+    viewer = User.query.get(viewer_id)
+    if not viewer:
+        return {"error": "Viewer not found"}, 404
+
+    q = BookingRequest.query.filter(
+        BookingRequest.status == BookingStatus.APPROVED
+    )
+
+    # Student sees own bookings only
+    if role == "STUDENT":
+        q = q.filter(BookingRequest.user_id == viewer_id)
+
+    bookings = q.all()
+    calendar_items = []
+
+    for b in bookings:
+        va = VenueAvailability.query.get(b.venue_available_id)
+        venue = Venue.query.get(va.venue_id)
+
+        calendar_items.append({
+            "id": f"booking-{b.booking_id}",
+            "type": "BOOKING",
+            "title": f"Booking - {venue.venue_name}",
+            "date": b.booking_date.isoformat(),
+            "start_time": va.start_time.strftime("%H:%M"),
+            "end_time": va.end_time.strftime("%H:%M"),
+            "venues": [venue.venue_name],
+            "status": b.status.value,
+            "owner_id": b.user_id
+        })
+
+    return {"calendar": calendar_items}, 200
+
 
 def cancel_booking_request(booking_id: int, payload: dict):
     booking = BookingRequest.query.get(booking_id)
@@ -257,15 +296,16 @@ def cancel_booking_request(booking_id: int, payload: dict):
         if booking.approval_date_time else None
     }
 
-    # 🔴 Cancel = force reject
+
     booking.status = BookingStatus.REJECTED
     booking.admin_comment = admin_comment
     booking.approval_date_time = datetime.utcnow()
 
-    # 🔓 Release availability
+    # release availability
     availability = VenueAvailability.query.get(booking.venue_available_id)
     if availability:
         availability.is_available = True
+        
 
     log_action(
         user_id=admin.user_id,
