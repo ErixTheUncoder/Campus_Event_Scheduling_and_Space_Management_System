@@ -1,4 +1,5 @@
 from flask import Flask, app
+from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 
@@ -17,6 +18,9 @@ def create_app():
     load_dotenv()
 
     app = Flask(__name__)
+    
+    # Enable CORS for frontend communication
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     @app.get("/")
     def home():

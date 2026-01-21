@@ -1,20 +1,14 @@
 from flask import request, jsonify
 from . import availability_bp
+from .service import get_all_availability
 
 @availability_bp.get("/")
 def view_available_venues():
     """
-    Student/Admin: View available venues by date/time range (stub).
-    Example: /api/availability?date=2026-01-10&start=10:00&end=12:00&capacity=50
+    Get all venue availability records.
     """
-    params = {
-        "date": request.args.get("date"),
-        "start": request.args.get("start"),
-        "end": request.args.get("end"),
-        "capacity": request.args.get("capacity", type=int),
-        "location": request.args.get("location"),
-    }
-    return jsonify({"message": "view available venues (stub)", "params": params}), 200
+    response, status = get_all_availability()
+    return jsonify(response), status
 
 @availability_bp.post("/")
 def set_venue_availability():
