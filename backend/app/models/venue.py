@@ -4,10 +4,12 @@ from ..extensions import db
 
 class VenueType(Enum):
     LECTURE_HALL = "Lecture Hall"
+    TUTORIAL_ROOM = "Tutorial Room"
     AUDITORIUM = "Auditorium"
-    LAB = "Lab"
+    MULTIPURPOSE_HALL = "Multipurpose Hall"
+    COMPUTER_LAB = "Computer Lab"
     MEETING_ROOM = "Meeting Room"
-    MULTIPURPOSE = "Multipurpose"
+    SPORTS_ARENA = "Sports Arena"
 
 
 class Venue(db.Model):
@@ -25,5 +27,5 @@ class Venue(db.Model):
             "venue_name": self.venue_name,
             "location": self.location,
             "capacity": self.capacity,
-            "venue_type": self.venue_type.value if self.venue_type else None
+            "venue_type": self.venue_type.value
         }

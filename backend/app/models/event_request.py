@@ -29,7 +29,7 @@ class EventRequest(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
 
-    purpose = db.Column(db.Text, nullable=True)
+    purpose = db.Column(db.Text, nullable=False)
 
     status = db.Column(db.Enum(EventRequestStatus), nullable=False, default=EventRequestStatus.PENDING)
 
