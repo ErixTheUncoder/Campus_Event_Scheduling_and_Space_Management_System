@@ -1,23 +1,24 @@
-from flask import request, jsonify
+from flask import request,jsonify
 from . import venues_bp
+from .services import list_venues, get_venue
+
 
 @venues_bp.get("/")
-def search_venues():
-    """
-    Search venues (stub).
-    Example: /api/venues?name=Lab&location=BlockA&min_capacity=30
-    """
+def get_venues():
     filters = {
-        "name": request.args.get("name"),
+        "venue_type": request.args.get("venue_type"),
         "location": request.args.get("location"),
         "min_capacity": request.args.get("min_capacity", type=int),
-        "type": request.args.get("type"),
     }
-    return jsonify({"message": "search venues (stub)", "filters": filters}), 200
+
+    response, status = list_venues(filters)
+    return jsonify(response), status
+
 
 @venues_bp.get("/<int:venue_id>")
 def get_venue_details(venue_id: int):
     """
-    View venue details (stub).
+    Get venue details by ID (real data).
     """
-    return jsonify({"message": "get venue details (stub)", "venue_id": venue_id}), 200
+    response, status = get_venue(venue_id)
+    return jsonify(response), status

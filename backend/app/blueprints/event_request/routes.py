@@ -2,6 +2,7 @@ from flask import request, jsonify
 from . import event_requests_bp
 from .services import (
     create_event_request,
+    get_event_calendar,
     list_event_requests,
     get_event_request,
     decide_event_request,
@@ -26,7 +27,6 @@ def list_requests():
     return jsonify(resp), code
 
 
-
 @event_requests_bp.get("/<int:event_id>")
 def get_request(event_id):
     viewer_id = request.args.get("viewer_id", type=int)
@@ -46,3 +46,11 @@ def remove_request(event_id):
     data = request.get_json(silent=True) or {}
     resp, code = delete_event_request(event_id, data)
     return jsonify(resp), code
+
+@event_requests_bp.get("/calendar")
+def event_calendar():
+    viewer_id = request.args.get("viewer_id", type=int)
+    role = request.args.get("role")  # EO or ADMIN
+
+    response, status = get_event_calendar(viewer_id, role)
+    return jsonify(response), status

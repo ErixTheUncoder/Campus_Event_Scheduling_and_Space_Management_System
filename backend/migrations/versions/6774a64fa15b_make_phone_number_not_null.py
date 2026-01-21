@@ -17,21 +17,20 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.alter_column(
-            'phone_number',
-            existing_type=sa.VARCHAR(length=30),
-            nullable=False
-        )
-
+    # Explicitly cast user_role from VARCHAR to ENUM
+    op.execute("""
+        ALTER TABLE users
+        ALTER COLUMN user_role
+        TYPE userrole
+        USING user_role::userrole
+    """)
 
 
 def downgrade():
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.alter_column('phone_number',
-               existing_type=sa.VARCHAR(length=30),
-               nullable=True)
-        batch_op.alter_column('user_role',
-               existing_type=sa.Enum('STUDENT', 'EVENT_ORGANIZER', 'ADMIN', name='userrole'),
-               type_=sa.VARCHAR(length=50),
-               existing_nullable=False)
+    op.execute("""
+        ALTER TABLE users
+        ALTER COLUMN user_role
+        TYPE VARCHAR(50)
+        USING user_role::text
+    """)
+

@@ -2,6 +2,7 @@ from flask import request, jsonify
 from . import booking_requests_bp
 from .services import (
     create_booking_request,
+    get_booking_calendar,
     list_booking_requests,
     get_booking_request,
     decide_booking_request,
@@ -44,3 +45,12 @@ def remove_booking(booking_id):
     data = request.get_json(silent=True) or {}
     resp, code = cancel_booking_request(booking_id, data)
     return jsonify(resp), code
+
+
+@booking_requests_bp.get("/calendar")
+def booking_calendar():
+    viewer_id = request.args.get("viewer_id", type=int)
+    role = request.args.get("role")  # STUDENT or ADMIN
+
+    response, status = get_booking_calendar(viewer_id, role)
+    return jsonify(response), status
