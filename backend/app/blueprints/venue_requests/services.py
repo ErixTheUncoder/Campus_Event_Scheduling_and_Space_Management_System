@@ -87,40 +87,44 @@ def create_venue_request(payload: dict):
     if end_time <= start_time:
         return {"error": "end_time must be later than start_time"}, 400
 
-    # check venue availability table
-    availability = VenueAvailability.query.filter_by(
-        venue_id=venue_id,
-        date=date
-    ).first()
+    # Create start and end datetime from date and times
+    start_datetime = datetime.combine(date, start_time)
+    end_datetime = datetime.combine(date, end_time)
 
-    if not availability or not availability.is_available:
-        return {"error": "Venue is not available on the selected date"}, 409
-
-    # conflict check: one venue, one event at one time
-    conflict = VenueRequest.query.filter(
-        VenueRequest.venue_id == venue_id,
-        VenueRequest.date == date,
-        VenueRequest.status == VenueRequestStatus.APPROVED
+    # Check for conflicts: find venue availability records for this venue that overlap
+    conflicts = VenueAvailability.query.filter(
+        VenueAvailability.venue_id == venue_id
     ).all()
 
-    for vr in conflict:
-        if _time_overlap(start_time, end_time, vr.start_time, vr.end_time):
-            return {
-                "error": "Venue already booked for this time slot"
-            }, 409
+    for avail in conflicts:
+        # Check if there's a time overlap
+        if start_datetime < avail.end_datetime and end_datetime > avail.start_datetime:
+            # Check if this availability slot has an approved venue request
+            existing_request = VenueRequest.query.filter(
+                VenueRequest.venue_available_id == avail.venue_available_id,
+                VenueRequest.status == VenueRequestStatus.APPROVED
+            ).first()
+            
+            if existing_request:
+                return {"error": "Venue already booked for this time slot"}, 409
 
-    # create venue request
+    # Create a new venue availability record for this request
+    availability = VenueAvailability(
+        venue_id=venue_id,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime
+    )
+    db.session.add(availability)
+    db.session.flush()  # Get the venue_available_id
+
+    # Create venue request
     vr = VenueRequest(
         event_id=event_id,
-        venue_id=venue_id,
-        organiser_id=organiser_id,
-        date=date,
-        start_time=start_time,
-        end_time=end_time,
-        reason=reason,
+        venue_available_id=availability.venue_available_id,
         status=VenueRequestStatus.PENDING,
         request_date_time=datetime.utcnow(),
-        admin_comment=None
+        admin_comment=None,
+        resources_needed=reason  # Store reason in resources_needed field
     )
 
     db.session.add(vr)
