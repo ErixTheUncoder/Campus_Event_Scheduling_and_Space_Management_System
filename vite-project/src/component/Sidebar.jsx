@@ -7,6 +7,7 @@ const Sidebar = ({ user }) => {
     { name: 'Events', path: '/events', roles: ['Admin', 'Event Organizer'] },
     { name: 'Venues', path: '/venues', roles: ['Admin', 'Event Organizer', 'Student'] },
     { name: 'Approvals', path: '/approvals', roles: ['Admin'] },
+    { name: 'User Management', path: '/users', roles: ['Admin'] },
     { name: 'Settings', path: '/settings', roles: ['Admin', 'Event Organizer', 'Student'] }
   ];
 
