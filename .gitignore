@@ -27,5 +27,5 @@ __pycache__/
 *.pyc
 
 # Ignore the virtual environment (never push this either!)
-venv/
+backend/venv/
 .env
