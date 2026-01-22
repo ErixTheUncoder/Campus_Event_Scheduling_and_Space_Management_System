@@ -10,6 +10,7 @@ import Events from './component/Events';
 import AddEventForm from './component/AddEventForm';
 import Approval from './component/Approval';
 import Venue from './component/Venue';
+import UserManagement from './component/UserManagement';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -110,6 +111,17 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* User Management - Only for Admin */}
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+
 
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
         
