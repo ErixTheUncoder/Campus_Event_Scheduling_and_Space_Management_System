@@ -56,11 +56,8 @@ def create_app():
     print("DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "connect_args": {"prepare_threshold": 0},
         "pool_pre_ping": True,
-        "poolclass": NullPool,
-        }
-
+    }
 
     # Initialize extensions
     db.init_app(app)
