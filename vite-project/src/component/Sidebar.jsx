@@ -1,14 +1,19 @@
 import { NavLink } from 'react-router-dom'; // Import NavLink
 
-const Sidebar = () => {
-  // Update menu items to allow mapping to paths
-  const menu = [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Events', path: '/events' },
-    { name: 'Venues', path: '/venues' },
-    { name: 'Approvals', path: '/approvals' },
-    { name: 'Settings', path: '/settings' }
+const Sidebar = ({ user }) => {
+  // Define all menu items with role restrictions
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Events', path: '/events', roles: ['Admin', 'Event Organizer'] },
+    { name: 'Venues', path: '/venues', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Approvals', path: '/approvals', roles: ['Admin'] },
+    { name: 'Settings', path: '/settings', roles: ['Admin', 'Event Organizer', 'Student'] }
   ];
+
+  // Filter menu items based on user role
+  const menu = allMenuItems.filter(item => 
+    item.roles.includes(user?.user_role)
+  );
 
   return (
     <aside className="sidebar">

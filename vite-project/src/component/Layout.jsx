@@ -2,7 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar'; // Import your existing sidebar
 import Header from './Header';   // Import your existing header
 
-const Layout = ({ user }) => {
+const Layout = ({ user, onLogout }) => {
   const location = useLocation();
 
   // Helper to make the Header title dynamic based on the URL
@@ -13,9 +13,9 @@ const Layout = ({ user }) => {
 
   return (
     <div className="app-container">
-      <Sidebar /> 
+      <Sidebar user={user} /> 
       <div className="main-content">
-        <Header title={getTitle()} />
+        <Header title={getTitle()} user={user} onLogout={onLogout} />
         <div className="dashboard-view">
           {/* content for the route (e.g. DashboardContent) renders here */}
           <Outlet /> 

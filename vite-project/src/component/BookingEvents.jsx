@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
 function EventRequestList(){
-  const bookings = [
-    { id: 1, event: 'Hackathon 2024', location: 'Main Hall', date: '2024-12-25', status: 'Confirmed' },
-    { id: 2, event: 'CS Club Meetup', location: 'Lab 3', date: '2024-12-26', status: 'Pending' },
-    { id: 3, event: 'Exam Prep', location: 'Library Room A', date: '2024-12-27', status: 'Confirmed' },
-    { id: 4, event: 'Staff Meeting', location: 'Conf Room B', date: '2024-12-28', status: 'Pending' },
-    { id: 5, event: 'Staff Meeting', location: 'Conf Room B', date: '2024-12-28', status: 'Rejected' },
-  ];
   // 1. Prepare the memory (State)
-  const [EventRequest, setEventRequest] = useState(bookings); //TEMPORARY VALUE
-
+  const [EventRequest, setEventRequest] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // 2. The Trigger (Effect)
-useEffect(() => {
+  useEffect(() => {
     // We define the logic inside to avoid "race conditions"
     const fetchEventRequests = async () => {
       try {
@@ -21,8 +15,10 @@ useEffect(() => {
         setError(null);
         
         // --- STEP A: The Request ---
-        // Replace this URL with your actual Flask endpoint
-        const EventRequest = await fetch('/api/event_request', {
+        // Use relative path - Vite proxy will forward to Flask backend
+        // Using admin user (ID 2) to view all events
+        // TODO: Replace with actual logged-in user ID from auth
+        const response = await fetch('/api/event-requests?viewer_id=2', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -33,15 +29,16 @@ useEffect(() => {
         // --- STEP B: The Guard ---
         // "Hard Concept": fetch() does not throw errors for 404/500 codes.
         // We must check the 'ok' property manually.
-        if (!EventRequest.ok) {
-          throw new Error(`HTTP Error! Status: ${EventRequest.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP Error! Status: ${response.status}`);
         }
 
         // --- STEP C: The Parse ---
-        const result = await EventRequest.json();
+        const result = await response.json();
 
         // --- STEP D: The Update ---
-        setData(result); 
+        // Backend returns object with event_requests array
+        setEventRequest(result.event_requests || []); 
         
       } catch (err) {
         // --- STEP E: The Safety Net ---
@@ -60,30 +57,49 @@ useEffect(() => {
     
   }, []); // <--- The empty array means "run only once on mount"
 
+  // Loading and error states
+  if (loading) {
+    return <div>Loading events...</div>;
+  }
+
+  if (error) {
+    return <div style={{ color: 'red' }}>Error: {error}</div>;
+  }
+
   return (
     <>
       <table>  
-      <tr>
-        <th>Event Name</th>
-        <th>Location</th>
-        <th>Date</th>
-        <th>Status</th>
-      </tr>
+      <thead>
+        <tr>
+          <th>Event Name</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Purpose</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
       {/* 3. The Map */}
-      {EventRequest.map((req) => (
-        // TODO: What do you want to display for each request?
-        <tr key={req.id}>
-          <td>{req.event}</td> 
-          <td>{req.location}</td> 
-          <td>{req.date}</td> 
-          <td>
-           
-            <span className={`badge ${req.status.toLowerCase()}`}>
+      {EventRequest.length === 0 ? (
+        <tr>
+          <td colSpan="5" style={{ textAlign: 'center' }}>No events found</td>
+        </tr>
+      ) : (
+        EventRequest.map((req) => (
+          <tr key={req.event_id}>
+            <td>{req.event_name}</td> 
+            <td>{req.event_date}</td> 
+            <td>{req.start_time} - {req.end_time}</td>
+            <td>{req.purpose}</td> 
+            <td>
+              <span className={`badge ${req.status.toLowerCase()}`}>
                 {req.status}
               </span>
-              </td> 
-        </tr>
-      ))}
+            </td> 
+          </tr>
+        ))
+      )}
+      </tbody>
       </table>
   </>
   );

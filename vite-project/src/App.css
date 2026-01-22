@@ -177,6 +177,14 @@ th {
 .badge.confirmed { background: #e8f8f5; color: var(--success); }
 .badge.pending { background: #fef9e7; color: var(--warning); }
 .badge.rejected {background: #ff82826b; color: var(--rejected);}
+.badge.approved {background: #e8f8f5; color: var(--success);}
+
+/* Venue availability badges */
+.badge.badge-available { background: #d4edda; color: #155724; }
+.badge.badge-on-hold { background: #fff3cd; color: #856404; }
+.badge.badge-unavailable { background: #f8d7da; color: #721c24; }
+.badge.badge-maintenance { background: #d6d8db; color: #383d41; }
+
 
 /* Buttons */
 .btn {
@@ -189,6 +197,10 @@ th {
   font-weight: 500;
 }
 .btn:hover { background-color: #2980b9; }
+
+.approval-btn{
+  background-color: var(--accent);
+}
 
 .loginBackground{
   background-color: var(--bg);
