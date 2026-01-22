@@ -1,4 +1,4 @@
-from flask import Flask, app
+from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -6,9 +6,11 @@ import os
 from .extensions import db
 from flask_migrate import Migrate
 from .config import DevelopmentConfig, ProductionConfig
+from sqlalchemy.pool import NullPool
 
 
 def create_app():
+
     """
     Application factory.
     Creates and configures the Flask app.
@@ -20,13 +22,14 @@ def create_app():
     app = Flask(__name__)
     
     # Enable CORS for frontend communication
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}})
 
     @app.get("/")
     def home():
         return {
             "message": "Backend is running",
             "endpoints": [
+                "/api/admin",
                 "/api/auth",
                 "/api/venues",
                 "/api/availability",
@@ -53,8 +56,10 @@ def create_app():
     print("DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "connect_args": {"prepare_threshold": 0}
-    }
+        "connect_args": {"prepare_threshold": 0},
+        "pool_pre_ping": True,
+        "poolclass": NullPool,
+        }
 
 
     # Initialize extensions
@@ -72,6 +77,7 @@ def create_app():
     from .blueprints.venue_requests.routes import venue_requests_bp
     from .blueprints.notifications.routes import notifications_bp
     from .blueprints.audit.routes import audit_bp
+    from .blueprints.admin.routes import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(venues_bp, url_prefix="/api/venues")
@@ -81,6 +87,7 @@ def create_app():
     app.register_blueprint(venue_requests_bp, url_prefix="/api/venue-requests")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     with app.app_context():
         from . import models
