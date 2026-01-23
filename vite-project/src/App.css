@@ -260,3 +260,65 @@ align-items: center;
   justify-self: center;
 }
 
+/* Bigger, standardized input/select */
+.form-control-lg {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  height: 44px;
+  box-sizing: border-box;
+}
+
+/* Optional: make textarea bigger too */
+.form-control-lg.textarea {
+  height: auto;
+  min-height: 110px;
+}
+
+.form-label-lg {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* For modals (smaller width) */
+.form-grid-2-modal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 820px) {
+  .form-grid-2-modal {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Optional: standardized 2-column responsive form grid */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 820px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.btn:hover { opacity: 0.9; }
+.btn:active { transform: scale(0.98); }
