@@ -13,6 +13,13 @@ const ROLES = [
   { label: "Admin", value: "ADMIN" },
 ];
 
+function formatRole(roleValue) {
+  if (!roleValue) return "-";
+  const v = String(roleValue).toUpperCase();
+  const match = ROLES.find((r) => r.value === v);
+  return match ? match.label : roleValue;
+}
+
 function getStoredUser() {
   try {
     const raw = localStorage.getItem("user");
@@ -369,72 +376,72 @@ export default function UserManagement() {
 
       {/* Create User */}
       <div className="card" style={cardStyle}>
-        <h2 style={{ marginTop: 0 }}>Create Account</h2>
-        <form onSubmit={handleCreateUser} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Full Name</label>
-            <input
-              className="input"
-              type="text"
-              value={createForm.full_name}
-              onChange={(e) => setCreateForm((p) => ({ ...p, full_name: e.target.value }))}
-              placeholder="e.g., Ali Bin Ahmad"
-            />
-          </div>
+        <h2 style={{ marginTop: 0, marginBottom: 5 }}>Create Account</h2>
+        <form onSubmit={handleCreateUser} className="form-grid-2">
+            <div style={fieldStyle}>
+                <label style={labelStyle}>Full Name</label>
+                <input
+                className="input form-control-lg"
+                type="text"
+                value={createForm.full_name}
+                onChange={(e) => setCreateForm((p) => ({ ...p, full_name: e.target.value }))}
+                placeholder="e.g., Ali Bin Ahmad"
+                />
+            </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Email</label>
-            <input
-              className="input"
-              type="email"
-              value={createForm.email}
-              onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
-              placeholder="e.g., ali@example.com"
-            />
-          </div>
+            <div style={fieldStyle}>
+                <label style={labelStyle}>Email</label>
+                <input
+                className="input form-control-lg"
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="e.g., ali@mmu.edu.my"
+                />
+            </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Phone Number</label>
-            <input
-              className="input"
-              type="text"
-              value={createForm.phone_number}
-              onChange={(e) => setCreateForm((p) => ({ ...p, phone_number: e.target.value }))}
-              placeholder="e.g., 0123456789"
-            />
-          </div>
+            <div style={fieldStyle}>
+                <label style={labelStyle}>Phone Number</label>
+                <input
+                className="input form-control-lg"
+                type="text"
+                value={createForm.phone_number}
+                onChange={(e) => setCreateForm((p) => ({ ...p, phone_number: e.target.value }))}
+                placeholder="e.g., 0123456789"
+                />
+            </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Temporary Password</label>
-            <input
-              className="input"
-              type="password"
-              value={createForm.password}
-              onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
-              placeholder="Set initial password"
-            />
-          </div>
+            <div style={fieldStyle}>
+                <label style={labelStyle}>Temporary Password</label>
+                <input
+                className="input form-control-lg"
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
+                placeholder="Set initial password"
+                />
+            </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Role</label>
-            <select
-              className="input"
-              value={createForm.user_role}
-              onChange={(e) => setCreateForm((p) => ({ ...p, user_role: e.target.value }))}
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div style={fieldStyle}>
+                <label style={labelStyle}>Role</label>
+                <select
+                className="input form-control-lg"
+                value={createForm.user_role}
+                onChange={(e) => setCreateForm((p) => ({ ...p, user_role: e.target.value }))}
+                >
+                {ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                    {r.label}
+                    </option>
+                ))}
+                </select>
+            </div>
 
-          <div style={{ display: "flex", alignItems: "end" }}>
-            <button className="btn primary" style={btnPrimaryStyle} type="submit">
-              Create User
-            </button>
-          </div>
+            <div style={{ display: "flex", alignItems: "end" }}>
+                <button className="btn" type="submit">
+                Create User
+                </button>
+            </div>
         </form>
       </div>
 
@@ -448,7 +455,7 @@ export default function UserManagement() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search (name, email, phone, status, role...)"
+            placeholder="Search (Name, Email, Phone, Role, Status...)"
             style={{
                 width: 520,        // wider
                 maxWidth: "100%",  // responsive on small screens
@@ -477,7 +484,7 @@ export default function UserManagement() {
             )}
 
         <div style={{ overflowX: "auto", marginTop: 12 }}>
-          <table style={tableStyle}>
+          <table style={{...tableStyle, minWidth: 900 }}>
             <thead>
               <tr>
                 <th style={{ ...thStyle, width: 44, textAlign: "center" }}>
@@ -489,9 +496,10 @@ export default function UserManagement() {
                   />
                 </th>
                 <th style={{ ...thStyle, width: 70, whiteSpace: "nowrap" }}>ID</th>
-                <th style={thStyle}>Full Name</th>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Phone</th>
+                <th style={{ ...thStyle, width: 180 }}>Full Name</th>
+                <th style={{ ...thStyle, width: 260 }}>Email</th>
+                <th style={{ ...thStyle, width: 140 }}>Phone</th>
+                <th style={{ ...thStyle, width: 150 }}>Roles</th>
                 <th style={{ ...thStyle, width: 120 }}>Status</th>
                 <th style={{ ...thStyle, width: 90, textAlign: "center" }}>Edit</th>
               </tr>
@@ -509,9 +517,12 @@ export default function UserManagement() {
                   </td>
 
                   <td style={{ ...tdStyle, width: 70, whiteSpace: "nowrap" }}>{u.user_id}</td>
-                  <td style={tdStyle}>{u.full_name}</td>
-                  <td style={tdStyle}>{u.email}</td>
-                  <td style={tdStyle}>{u.phone_number}</td>
+                  <td style={{ ...tdStyle, width: 180 }}>{u.full_name}</td>
+                  <td style={{ ...tdStyle, width: 260 }}>{u.email}</td>
+                  <td style={{ ...tdStyle, width: 140 }}>{u.phone_number}</td>
+
+
+                  <td style={{ ...tdStyle, width: 150, whiteSpace: "nowrap" }}>{formatRole(u.user_role)}</td>
 
                   <td style={tdStyle}>
                     <span
@@ -535,7 +546,7 @@ export default function UserManagement() {
 
               {!loading && filteredUsers.length === 0 && (
                 <tr>
-                  <td style={tdStyle} colSpan={7}>
+                  <td style={tdStyle} colSpan={8}>
                     No users found.
                   </td>
                 </tr>
@@ -543,7 +554,7 @@ export default function UserManagement() {
 
               {loading && (
                 <tr>
-                  <td style={tdStyle} colSpan={7}>
+                  <td style={tdStyle} colSpan={8}>
                     Loading users...
                   </td>
                 </tr>
@@ -557,58 +568,59 @@ export default function UserManagement() {
       {editModal.open && (
         <div style={modalOverlayStyle} onClick={closeEditModal}>
           <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Edit User</h3>
+            <h2 style={{ marginTop: 0, marginBottom: 5}}>Edit User</h2>
 
             {editModal.error && <div style={inlineErrorStyle}>{editModal.error}</div>}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>User ID</label>
-                <input className="input" value={editModal.userId ?? ""} disabled />
-              </div>
+            <div className="form-grid-2-modal">
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">User ID</label>
+                    <input className="input form-control-lg" value={editModal.userId ?? ""} disabled />
+                </div>
 
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Full Name</label>
-                <input className="input" value={editModal.fullName} disabled />
-              </div>
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">Full Name</label>
+                    <input className="input form-control-lg" value={editModal.fullName} disabled />
+                </div>
 
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Email</label>
-                <input className="input" value={editModal.email} disabled />
-              </div>
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">Email</label>
+                    <input className="input form-control-lg" value={editModal.email} disabled />
+                </div>
 
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Phone</label>
-                <input className="input" value={editModal.phone} disabled />
-              </div>
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">Phone</label>
+                    <input className="input form-control-lg" value={editModal.phone} disabled />
+                </div>
 
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Role</label>
-                <select
-                  className="input"
-                  value={editModal.role}
-                  onChange={(e) => setEditModal((p) => ({ ...p, role: e.target.value }))}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">Role</label>
+                    <select
+                    className="input form-control-lg"
+                    value={editModal.role}
+                    onChange={(e) => setEditModal((p) => ({ ...p, role: e.target.value }))}
+                    >
+                    {ROLES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                        {r.label}
+                        </option>
+                    ))}
+                    </select>
+                </div>
 
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Active Status</label>
-                <select
-                  className="input"
-                  value={editModal.isActive ? "ACTIVE" : "INACTIVE"}
-                  onChange={(e) => setEditModal((p) => ({ ...p, isActive: e.target.value === "ACTIVE" }))}
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
+                <div style={fieldStyle}>
+                    <label className="form-label-lg">Active Status</label>
+                    <select
+                    className="input form-control-lg"
+                    value={editModal.isActive ? "ACTIVE" : "INACTIVE"}
+                    onChange={(e) => setEditModal((p) => ({ ...p, isActive: e.target.value === "ACTIVE" }))}
+                    >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    </select>
+                </div>
             </div>
+
 
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => openResetPasswordModal({
@@ -622,14 +634,13 @@ export default function UserManagement() {
                 <button className="btn" onClick={closeEditModal} disabled={editModal.saving}>
                   Cancel
                 </button>
-                <button className="btn primary" style={btnPrimaryStyle} onClick={saveEditModal} disabled={editModal.saving}>
+                <button className="btn" onClick={saveEditModal} disabled={editModal.saving}>
                   {editModal.saving ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>)}
 
       {/* Reset Password Modal */}
       {pwModal.open && (
@@ -670,7 +681,7 @@ export default function UserManagement() {
               <button className="btn" onClick={closeResetPasswordModal} disabled={pwModal.saving}>
                 Cancel
               </button>
-              <button className="btn primary" style={btnPrimaryStyle} onClick={submitResetPassword} disabled={pwModal.saving}>
+              <button className="btn" onClick={submitResetPassword} disabled={pwModal.saving}>
                 {pwModal.saving ? "Saving..." : "Reset"}
               </button>
             </div>
@@ -691,9 +702,10 @@ const cardStyle = {
 };
 
 const fieldStyle = { display: "flex", flexDirection: "column", gap: 6 };
-const labelStyle = { fontSize: 13, opacity: 0.8 };
+const labelStyle = { fontSize: 15, fontWeight: 500, opacity: 0.9 };
 
-const tableStyle = { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" };
+
+const tableStyle = { width: "100%", borderCollapse: "collapse", tableLayout: "auto" };
 const thStyle = {
   textAlign: "left",
   borderBottom: "1px solid #eee",
@@ -701,7 +713,15 @@ const thStyle = {
   fontSize: 13,
   opacity: 0.8,
 };
-const tdStyle = { borderBottom: "1px solid #f2f2f2", padding: "10px 8px", verticalAlign: "top" };
+const tdStyle = {
+  borderBottom: "1px solid #f2f2f2",
+  padding: "10px 8px",
+  verticalAlign: "top",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
 
 const pillStyle = {
   display: "inline-block",
@@ -759,10 +779,4 @@ const modalStyle = {
   borderRadius: 14,
   padding: 16,
   boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
-};
-
-const btnPrimaryStyle = {
-  background: "#0ea5e9",
-  color: "#fff",
-  border: "none",
 };
