@@ -14,7 +14,7 @@ import UserManagement from './component/UserManagement';
 import AuditLog from './component/AuditLog';
 
 function App() {
-  const [user, setUser] = useState({name: 'ADMIN',user_role: "Admin"}); //CHANGE THIS TO ENABLE LOGIN
+  const [user, setUser] = useState(null); //CHANGE THIS TO ENABLE LOGIN
   const [loading, setLoading] = useState(true);
 
   // Load user from localStorage on app mount
