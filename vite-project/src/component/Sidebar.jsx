@@ -177,9 +177,10 @@ const Sidebar = ({ user }) => {
                 <NavLink
                   key={item.name}
                   to={item.path}
+                  end={item.path === "/events"}   // exact match only for /events
                   className={({ isActive }) => `nav-link ${isActive ? "active" : ""} navbar`}
-                  // (optional) keep open after navigation; remove if you want auto-close when clicking links:
                   // onClick={closeDrawer}
+                  // (optional) keep open after navigation; remove if you want auto-close when clicking links:
                 >
                   {item.name}
                 </NavLink>
@@ -201,6 +202,7 @@ const Sidebar = ({ user }) => {
                       <NavLink
                         key={c.name}
                         to={c.path}
+                        end={c.path === "/events"}
                         className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
                         // (optional) keep open after navigation; remove if you want auto-close:
                         // onClick={closeDrawer}
