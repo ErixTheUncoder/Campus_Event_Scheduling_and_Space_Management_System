@@ -101,13 +101,14 @@ function AuditLog(){
 
   return (
     <>
+    <div className="table-container">
       {error && (
         <div style={{ color: 'orange', marginBottom: '10px' }}>
           Note: Using sample data (database connection issue)
         </div>
       )}
       
-      <table>  
+      <table className="audit-table">  
         <thead>
           <tr>
             <th>Audit ID</th>
@@ -142,6 +143,7 @@ function AuditLog(){
           )}
         </tbody>
       </table>
+    </div>
     </>
   );
 }

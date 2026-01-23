@@ -167,6 +167,68 @@ th {
   width: 100%;
 }
 
+/* Audit Log Table - Enhanced Spacing */
+.audit-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #e8e8e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audit-table th:nth-child(1), /* Audit ID */
+.audit-table td:nth-child(1) { width: 7%; }
+
+.audit-table th:nth-child(2), /* User ID */
+.audit-table td:nth-child(2) { width: 7%; }
+
+.audit-table th:nth-child(3), /* Action Type */
+.audit-table td:nth-child(3) { width: 15%; }
+
+.audit-table th:nth-child(4), /* Date & Time */
+.audit-table td:nth-child(4) { width: 17%; }
+
+.audit-table th:nth-child(5), /* Entity Type */
+.audit-table td:nth-child(5) { width: 13%; }
+
+.audit-table th:nth-child(6), /* Entity ID */
+.audit-table td:nth-child(6) { width: 7%; }
+
+.audit-table th:nth-child(7), /* Old Value */
+.audit-table td:nth-child(7) { width: 17%; }
+
+.audit-table th:nth-child(8), /* New Value */
+.audit-table td:nth-child(8) { width: 17%; }
+
+.audit-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.audit-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.audit-table th {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  padding: 0.75rem;
+  border-bottom: 2px solid #d1d5db;
+  font-size: 0.85rem;
+}
+
+.audit-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .badge {
   padding: 0.25rem 0.75rem;
   border-radius: 20px;
