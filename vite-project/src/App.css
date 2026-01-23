@@ -322,6 +322,47 @@ align-items: center;
   justify-self: center;
 }
 
+/* calendar */
+
+/* .rbc-today { background: transparent !important; } */
+.rbc-calendar { position: relative; z-index: 2; }
+
+/* Calendar modal */
+.cal-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  padding: 16px;
+}
+
+.cal-modal {
+  width: min(520px, 92vw);
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.22);
+}
+
+.cal-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cal-modal-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: rgba(0,0,0,0.06);
+}
+
 /* bigger input box create user */
 .form-control-lg {
   width: 100%;
@@ -406,6 +447,9 @@ align-items: center;
   user-select: none;
 }
 
+.sidebar-hamburger { z-index: 50; }
+.sidebar-hamburger.is-open { z-index: 10003; }
+
 .sidebar-hamburger:hover {
   opacity: 1;
 }
@@ -422,14 +466,14 @@ align-items: center;
   /* background: rgba(0,0,0,0.35); */
   background: transparent;
   opacity: 0;
-  pointer-events: none;       /* do NOT block clicks */
   transition: opacity 0.22s ease;
   z-index: 10001;
+  pointer-events: none !important; /* do NOT block clicks */
 }
 
 .sidebar-overlay.show {
   opacity: 1;
-  pointer-events: none;       /* keep none even when show */
+  pointer-events: none !important;  /* keep none even when show */
 }
 
 /* Drawer sidebar base */

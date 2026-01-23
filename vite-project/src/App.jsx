@@ -12,6 +12,8 @@ import Approval from './component/Approval';
 import Venue from './component/Venue';
 import UserManagement from './component/UserManagement';
 import AuditLog from './component/AuditLog';
+import EventCalendar from "./component/EventCalendar";
+
 
 function App() {
   const [user, setUser] = useState(null); //CHANGE THIS TO ENABLE LOGIN
@@ -91,6 +93,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route 
+          path="/events/calendar"
+          element={
+            <ProtectedRoute allowedRoles={['Admin', 'Event Organizer', 'Student']}>
+              <EventCalendar />
+            </ProtectedRoute>
+          }
+        />
+
         <Route 
           path='/events/add' 
           element={

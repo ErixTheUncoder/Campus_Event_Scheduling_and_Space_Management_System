@@ -1,14 +1,8 @@
 from werkzeug.security import generate_password_hash
-from datetime import datetime
 import json
 
 from ...extensions import db
 from ...models.user import User, UserRole
-from ...models.event_request import EventRequest, EventRequestStatus
-from ...models.venue_request import VenueRequest, VenueRequestStatus
-from ...models.booking_request import BookingRequest, BookingStatus
-from ...models.venue import Venue
-from ...models.venue_availability import VenueAvailability
 from ..audit.services import log_action
 
 
@@ -146,58 +140,4 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
     return {"message": "User role updated"}, 200
 
 
-def get_admin_calendar(admin_id: int):
-    admin, err = _require_admin(admin_id)
-    if err:
-        return err
 
-    calendar = []
-
-    # Approved Events
-    events = EventRequest.query.filter(
-        EventRequest.status == EventRequestStatus.APPROVED
-    ).all()
-
-    for e in events:
-        venues = VenueRequest.query.filter(
-            VenueRequest.event_id == e.event_id,
-            VenueRequest.status == VenueRequestStatus.APPROVED
-        ).all()
-
-        venue_names = [
-            Venue.query.get(v.venue_id).venue_name
-            for v in venues
-        ]
-
-        calendar.append({
-            "id": f"event-{e.event_id}",
-            "type": "EVENT",
-            "title": e.event_name,
-            "date": e.event_date.isoformat(),
-            "start_time": e.start_time.strftime("%H:%M"),
-            "end_time": e.end_time.strftime("%H:%M"),
-            "venues": venue_names,
-            "owner_id": e.user_id
-        })
-
-    # Approved Bookings
-    bookings = BookingRequest.query.filter(
-        BookingRequest.status == BookingStatus.APPROVED
-    ).all()
-
-    for b in bookings:
-        va = VenueAvailability.query.get(b.venue_available_id)
-        venue = Venue.query.get(va.venue_id)
-
-        calendar.append({
-            "id": f"booking-{b.booking_id}",
-            "type": "BOOKING",
-            "title": f"Booking - {venue.venue_name}",
-            "date": b.booking_date.isoformat(),
-            "start_time": va.start_time.strftime("%H:%M"),
-            "end_time": va.end_time.strftime("%H:%M"),
-            "venues": [venue.venue_name],
-            "owner_id": b.user_id
-        })
-
-    return {"calendar": calendar}, 200
