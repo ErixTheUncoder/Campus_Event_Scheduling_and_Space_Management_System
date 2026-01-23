@@ -260,8 +260,31 @@ th {
 }
 .btn:hover { background-color: #2980b9; }
 
-.approval-btn{
-  background-color: var(--accent);
+.approval-btn {
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  margin: 0 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.approval-btn.approve {
+  background-color: var(--success);
+}
+
+.approval-btn.approve:hover {
+  background-color: #229954;
+}
+
+.approval-btn.reject {
+  background-color: var(--rejected);
+}
+
+.approval-btn.reject:hover {
+  background-color: #e74c3c;
 }
 
 .loginBackground{
