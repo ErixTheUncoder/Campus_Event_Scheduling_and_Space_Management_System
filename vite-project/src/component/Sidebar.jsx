@@ -2,6 +2,16 @@ import { NavLink } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const Sidebar = ({ user }) => {
+  // Define all menu items with role restrictions
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Events', path: '/events', roles: ['Admin', 'Event Organizer'] },
+    { name: 'Venues', path: '/venues', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Approvals', path: '/approvals', roles: ['Admin'] },
+    { name: 'User Management', path: '/users', roles: ['Admin'] },
+    { name: 'Audit Log', path: '/audit-log', roles: ['Admin'] },
+    { name: 'Settings', path: '/settings', roles: ['Admin', 'Event Organizer', 'Student'] }
+  ];
   const [open, setOpen] = useState(false); // drawer open/close
   const [openSection, setOpenSection] = useState({ events: false });
 
