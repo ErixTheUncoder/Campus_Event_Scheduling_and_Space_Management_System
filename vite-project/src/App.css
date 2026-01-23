@@ -198,7 +198,7 @@ th {
 .audit-table td:nth-child(4) { width: 17%; }
 
 .audit-table th:nth-child(5), /* Entity Type */
-.audit-table td:nth-child(5) { width: 13%; }
+.audit-table td:nth-child(5) { width: 10%; }
 
 .audit-table th:nth-child(6), /* Entity ID */
 .audit-table td:nth-child(6) { width: 7%; }
