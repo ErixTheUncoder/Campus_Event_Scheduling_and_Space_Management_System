@@ -1,108 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 
-function EventRequestList(){
-  // 1. Prepare the memory (State)
-  const [EventRequest, setEventRequest] = useState([]);
+function EventRequestList() {
+  const [eventRequests, setEventRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 2. The Trigger (Effect)
   useEffect(() => {
-    // We define the logic inside to avoid "race conditions"
     const fetchEventRequests = async () => {
       try {
-        // Reset error slightly before starting (optional but good practice)
         setError(null);
-        
-        // --- STEP A: The Request ---
-        // Use relative path - Vite proxy will forward to Flask backend
-        // Using admin user (ID 2) to view all events
-        // TODO: Replace with actual logged-in user ID from auth
-        const response = await fetch('/api/event-requests?viewer_id=2', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            // If you implement auth later, your token goes here
-          },
-        });
 
-        // --- STEP B: The Guard ---
-        // "Hard Concept": fetch() does not throw errors for 404/500 codes.
-        // We must check the 'ok' property manually.
-        if (!response.ok) {
-          throw new Error(`HTTP Error! Status: ${response.status}`);
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const userId = user?.user_id;
+
+        if (!userId) {
+          setEventRequests([]);
+          setLoading(false);
+          return;
         }
 
-        // --- STEP C: The Parse ---
-        const result = await response.json();
+        // NOTE: backend expects viewer_id
+        const response = await fetch(`/api/event-requests/?viewer_id=${userId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
 
-        // --- STEP D: The Update ---
-        // Backend returns object with event_requests array
-        setEventRequest(result.event_requests || []); 
-        
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || `HTTP Error! Status: ${response.status}`);
+        }
+
+        setEventRequests(result.event_requests || []);
       } catch (err) {
-        // --- STEP E: The Safety Net ---
-        // We save the error message to display it to the user later
         setError(err.message);
         console.error("Fetch aborted:", err);
       } finally {
-        // --- STEP F: The Cleanup ---
-        // Whether we succeeded or failed, we are done loading.
         setLoading(false);
       }
     };
 
-    // Execute the function we just defined
     fetchEventRequests();
-    
-  }, []); // <--- The empty array means "run only once on mount"
+  }, []);
 
-  // Loading and error states
-  if (loading) {
-    return <div>Loading events...</div>;
-  }
-
-  if (error) {
-    return <div style={{ color: 'red' }}>Error: {error}</div>;
-  }
+  if (loading) return <div>Loading events...</div>;
+  if (error) return <div style={{ color: "red" }}>Error: {error}</div>;
 
   return (
-    <>
-      <table>  
+    <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
+      {/* Control column widths so “Event Name” won’t take too much space */}
+      <colgroup>
+        <col style={{ width: "22%" }} /> {/* Event Name */}
+        <col style={{ width: "12%" }} /> {/* Date */}
+        <col style={{ width: "14%" }} /> {/* Time */}
+        <col style={{ width: "22%" }} /> {/* Requested Venue */}
+        <col style={{ width: "22%" }} /> {/* Purpose */}
+        <col style={{ width: "8%" }} />  {/* Status */}
+      </colgroup>
+
       <thead>
         <tr>
           <th>Event Name</th>
           <th>Date</th>
           <th>Time</th>
+          <th>Requested Venue</th>
           <th>Purpose</th>
           <th>Status</th>
         </tr>
       </thead>
+
       <tbody>
-      {/* 3. The Map */}
-      {EventRequest.length === 0 ? (
-        <tr>
-          <td colSpan="5" style={{ textAlign: 'center' }}>No events found</td>
-        </tr>
-      ) : (
-        EventRequest.map((req) => (
-          <tr key={req.event_id}>
-            <td>{req.event_name}</td> 
-            <td>{req.event_date}</td> 
-            <td>{req.start_time} - {req.end_time}</td>
-            <td>{req.purpose}</td> 
-            <td>
-              <span className={`badge ${req.status.toLowerCase()}`}>
-                {req.status}
-              </span>
-            </td> 
+        {eventRequests.length === 0 ? (
+          <tr>
+            <td colSpan="6" style={{ textAlign: "center" }}>
+              No events created yet
+            </td>
           </tr>
-        ))
-      )}
+        ) : (
+          eventRequests.map((req) => (
+            <tr key={req.event_id}>
+              {/* Event Name (truncate if too long) */}
+              <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {req.event_name}
+              </td>
+
+              <td style={{ whiteSpace: "nowrap" }}>{req.event_date}</td>
+
+              <td style={{ whiteSpace: "nowrap" }}>
+                {req.start_time} - {req.end_time}
+              </td>
+
+              {/* ✅ Requested Venue (will show '-' until backend provides requested_venues) */}
+              <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {(req.requested_venues || []).join(", ") || "-"}
+              </td>
+
+              {/* Purpose (truncate if too long) */}
+              <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {req.purpose}
+              </td>
+
+              <td>
+                <span className={`badge ${String(req.status || "").toLowerCase()}`}>
+                  {req.status}
+                </span>
+              </td>
+            </tr>
+          ))
+        )}
       </tbody>
-      </table>
-  </>
+    </table>
   );
-};
+}
 
 export default EventRequestList;

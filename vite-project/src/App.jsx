@@ -89,7 +89,7 @@ function App() {
           path="/events" 
           element={
             <ProtectedRoute allowedRoles={['Admin', 'Event Organizer']}>
-              <Events />
+              <Events user={user} />
             </ProtectedRoute>
           }
         />

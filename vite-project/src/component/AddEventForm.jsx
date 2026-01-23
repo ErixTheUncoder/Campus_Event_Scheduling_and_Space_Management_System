@@ -1,56 +1,93 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+const modalOverlayStyle = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.35)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999,
+  padding: 16,
+};
+
+const modalBoxStyle = {
+  width: "min(560px, 92vw)",
+  background: "#fff",
+  borderRadius: 14,
+  padding: 18,
+  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+};
 
 const AddEventForm = () => {
   const navigate = useNavigate();
-  
+
+  const [modal, setModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    type: "success", // "success" | "error"
+    redirectTo: null,
+  });
+
   // Form states
-  const [eventName, setEventName] = useState('');
-  const [purpose, setPurpose] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [venueId, setVenueId] = useState('');
-  
+  const [eventName, setEventName] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [venueId, setVenueId] = useState("");
+
   // Data states
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   // Fetch venues on component mount
   useEffect(() => {
     const fetchVenues = async () => {
       try {
-        const response = await fetch('/api/venues');
-        if (!response.ok) throw new Error('Failed to fetch venues');
-        
+        const response = await fetch("/api/venues");
+        if (!response.ok) throw new Error("Failed to fetch venues");
+
         const result = await response.json();
         setVenues(result.venues || []);
       } catch (err) {
-        console.error('Error fetching venues:', err);
-        setError('Could not load venues');
+        console.error("Error fetching venues:", err);
+        setError("Could not load venues");
       }
     };
-    
+
     fetchVenues();
   }, []);
 
+  const closeModal = () => {
+    setModal((p) => ({ ...p, open: false }));
+    // If modal was used for success and needs redirect, do it after close
+    if (modal.redirectTo) navigate(modal.redirectTo);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       // Get user from localStorage
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+
       if (!user.user_id) {
-        setError('User not logged in');
+        setModal({
+          open: true,
+          type: "error",
+          title: "Not logged in",
+          message: "User not logged in. Please log in again.",
+          redirectTo: null,
+        });
         setLoading(false);
         return;
       }
-
-      console.log('Creating event with user:', user.user_id);
 
       // Step 1: Create Event Request
       const eventPayload = {
@@ -59,60 +96,65 @@ const AddEventForm = () => {
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime,
-        purpose: purpose
+        purpose: purpose,
       };
 
-      console.log('Event payload:', eventPayload);
-
-      const eventResponse = await fetch('/api/event-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventPayload)
+      const eventResponse = await fetch("/api/event-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventPayload),
       });
 
-      const eventResult = await eventResponse.json();
-      console.log('Event response:', eventResult);
+      const eventResult = await eventResponse.json().catch(() => ({}));
 
       if (!eventResponse.ok) {
-        throw new Error(eventResult.error || 'Failed to create event');
+        throw new Error(eventResult.error || "Failed to create event");
       }
 
-      const eventId = eventResult.event_request.event_id;
-      console.log('Event created with ID:', eventId);
+      const eventId = eventResult?.event_request?.event_id;
 
-      // Step 2: Create Venue Request with conflict checking
+      // Step 2: Create Venue Request
       const venuePayload = {
         organiser_id: user.user_id,
         event_id: eventId,
-        venue_id: parseInt(venueId),
+        venue_id: parseInt(venueId, 10),
         date: eventDate,
         start_time: startTime,
         end_time: endTime,
-        reason: purpose
+        reason: purpose,
       };
 
-      console.log('Venue request payload:', venuePayload);
-
-      const venueResponse = await fetch('/api/venue-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(venuePayload)
+      const venueResponse = await fetch("/api/venue-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(venuePayload),
       });
 
-      const venueResult = await venueResponse.json();
-      console.log('Venue response:', venueResult);
+      const venueResult = await venueResponse.json().catch(() => ({}));
 
       if (!venueResponse.ok) {
-        // If venue request fails, show specific error (like conflict)
-        throw new Error(venueResult.error || 'Failed to request venue');
+        throw new Error(venueResult.error || "Failed to request venue");
       }
 
-      alert("Event and Venue Request Created Successfully!"); 
-      navigate('/events');
-      
+      // Success modal (navigate after closing)
+      setModal({
+        open: true,
+        type: "success",
+        title: "Success",
+        message: "Event and Venue Request created successfully!",
+        redirectTo: "/events",
+      });
     } catch (err) {
-      console.error('Submit error:', err);
-      setError(err.message || 'Failed to submit. Make sure the backend is running.');
+      console.error("Submit error:", err);
+
+      // Error modal (keep user on page)
+      setModal({
+        open: true,
+        type: "error",
+        title: "Submission Failed",
+        message: err.message || "Failed to submit. Make sure the backend is running.",
+        redirectTo: null,
+      });
     } finally {
       setLoading(false);
     }
@@ -121,82 +163,97 @@ const AddEventForm = () => {
   return (
     <div className="table-container">
       <h3>Create New Event</h3>
-      
+
+      {/* Optional inline error (kept) */}
       {error && (
-        <div style={{ 
-          color: 'red', 
-          backgroundColor: '#ffe6e6', 
-          padding: '10px', 
-          borderRadius: '4px', 
-          marginBottom: '1rem' 
-        }}>
+        <div
+          style={{
+            color: "red",
+            backgroundColor: "#ffe6e6",
+            padding: "10px",
+            borderRadius: "4px",
+            marginBottom: "1rem",
+          }}
+        >
           {error}
         </div>
       )}
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px' }}>
-        
+
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+          maxWidth: "400px",
+        }}
+      >
         <label>
           Event Name:
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={eventName}
             onChange={(e) => setEventName(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} 
+            required
+            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
           />
         </label>
 
         <label>
           Event Description / Purpose:
-          <textarea 
+          <textarea
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px', minHeight: '80px' }} 
+            required
+            style={{
+              width: "100%",
+              padding: "8px",
+              marginTop: "5px",
+              minHeight: "80px",
+            }}
           />
         </label>
 
         <label>
           Date:
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} 
+            required
+            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
           />
         </label>
 
         <label>
           Start Time:
-          <input 
-            type="time" 
+          <input
+            type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} 
+            required
+            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
           />
         </label>
 
         <label>
           End Time:
-          <input 
-            type="time" 
+          <input
+            type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }} 
+            required
+            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
           />
         </label>
 
         <label>
           Venue:
-          <select 
+          <select
             value={venueId}
             onChange={(e) => setVenueId(e.target.value)}
-            required 
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+            required
+            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
           >
             <option value="">-- Select a Venue --</option>
             {venues.map((venue) => (
@@ -207,20 +264,64 @@ const AddEventForm = () => {
           </select>
         </label>
 
-        <div style={{ marginTop: '1rem' }}>
+        <div style={{ marginTop: "1rem", display: "flex", gap: 10 }}>
           <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit'}
+            {loading ? "Submitting..." : "Submit"}
           </button>
-          <button 
-            type="button" 
+
+          <button
+            type="button"
+            className="btn"
             onClick={() => navigate(-1)}
             disabled={loading}
-            style={{ marginLeft: '10px', padding: '0.5rem 1rem', cursor: 'pointer' }}
           >
             Cancel
           </button>
         </div>
       </form>
+
+      {/* Modal */}
+      {modal.open && (
+        <div style={modalOverlayStyle} onClick={closeModal}>
+          <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <h3 style={{ margin: 0 }}>
+                {modal.title}
+              </h3>
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                color: modal.type === "error" ? "#b42318" : "#1a1a1a",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {modal.message}
+            </div>
+
+            <div
+              style={{
+                marginTop: 18,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button type="button" className="btn primary" onClick={closeModal}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
