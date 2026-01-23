@@ -76,6 +76,7 @@ def create_app():
     from .blueprints.notifications.routes import notifications_bp
     from .blueprints.audit.routes import audit_bp
     from .blueprints.admin.routes import admin_bp
+    from app.blueprints.calendar.routes import calendar_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(venues_bp, url_prefix="/api/venues")
@@ -86,6 +87,7 @@ def create_app():
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(audit_bp, url_prefix="/api/audit")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(calendar_bp, url_prefix="/api/calendar")
 
     with app.app_context():
         from . import models

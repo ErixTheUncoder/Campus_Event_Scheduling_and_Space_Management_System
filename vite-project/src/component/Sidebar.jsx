@@ -2,6 +2,16 @@ import { NavLink } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const Sidebar = ({ user }) => {
+  // Define all menu items with role restrictions
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Events', path: '/events', roles: ['Admin', 'Event Organizer'] },
+    { name: 'Venues', path: '/venues', roles: ['Admin', 'Event Organizer', 'Student'] },
+    { name: 'Approvals', path: '/approvals', roles: ['Admin'] },
+    { name: 'User Management', path: '/users', roles: ['Admin'] },
+    { name: 'Audit Log', path: '/audit-log', roles: ['Admin'] },
+    { name: 'Settings', path: '/settings', roles: ['Admin', 'Event Organizer', 'Student'] }
+  ];
   const [open, setOpen] = useState(false); // drawer open/close
   const [openSection, setOpenSection] = useState({ events: false });
 
@@ -167,9 +177,10 @@ const Sidebar = ({ user }) => {
                 <NavLink
                   key={item.name}
                   to={item.path}
+                  end={item.path === "/events"}   // exact match only for /events
                   className={({ isActive }) => `nav-link ${isActive ? "active" : ""} navbar`}
-                  // (optional) keep open after navigation; remove if you want auto-close when clicking links:
                   // onClick={closeDrawer}
+                  // (optional) keep open after navigation; remove if you want auto-close when clicking links:
                 >
                   {item.name}
                 </NavLink>
@@ -191,6 +202,7 @@ const Sidebar = ({ user }) => {
                       <NavLink
                         key={c.name}
                         to={c.path}
+                        end={c.path === "/events"}
                         className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
                         // (optional) keep open after navigation; remove if you want auto-close:
                         // onClick={closeDrawer}

@@ -29,4 +29,5 @@ __pycache__/
 # Ignore the virtual environment (never push this either!)
 \venv\
 .\backend\venv\
+backend/venv/
 .env

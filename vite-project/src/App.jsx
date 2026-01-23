@@ -11,9 +11,12 @@ import AddEventForm from './component/AddEventForm';
 import Approval from './component/Approval';
 import Venue from './component/Venue';
 import UserManagement from './component/UserManagement';
+import AuditLog from './component/AuditLog';
+import EventCalendar from "./component/EventCalendar";
+
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); //CHANGE THIS TO ENABLE LOGIN
   const [loading, setLoading] = useState(true);
 
   // Load user from localStorage on app mount
@@ -90,6 +93,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route 
+          path="/events/calendar"
+          element={
+            <ProtectedRoute allowedRoles={['Admin', 'Event Organizer', 'Student']}>
+              <EventCalendar />
+            </ProtectedRoute>
+          }
+        />
+
         <Route 
           path='/events/add' 
           element={
@@ -122,6 +135,15 @@ function App() {
           }
         />
 
+        {/* Audit Log - Only for Admin */}
+        <Route
+          path="/audit-log"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AuditLog />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
         
