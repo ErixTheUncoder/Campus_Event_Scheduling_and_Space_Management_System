@@ -7,6 +7,9 @@ from ...models.venue_request import VenueRequest, VenueRequestStatus
 from ..audit.services import log_action
 from ...models.user import User, UserRole
 
+from ...models.venue_availability import VenueAvailability
+from ...models.venue import Venue
+
 from ...blueprints.notifications.services import create_notification
 from ...models.notification import NotificationType
 
@@ -34,7 +37,7 @@ def create_event_request(payload: dict):
         user_id = int(payload.get("user_id"))
     except (TypeError, ValueError):
         return {"error": "user_id is required and must be an integer"}, 400
-    
+
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found"}, 404
@@ -107,7 +110,7 @@ def list_event_requests(viewer_id: int | None, status: str | None = None):
     viewer = User.query.get(viewer_id)
     if not viewer:
         return {"error": "Viewer not found"}, 404
-    
+
     q = EventRequest.query
 
     if viewer.user_role == UserRole.ADMIN:
@@ -128,7 +131,38 @@ def list_event_requests(viewer_id: int | None, status: str | None = None):
         q = q.filter(EventRequest.status == status_enum)
 
     items = q.order_by(EventRequest.request_date_time.desc()).all()
-    return {"event_requests": [i.to_dict() for i in items]}, 200
+
+    result = []
+    for e in items:
+        venue_reqs = VenueRequest.query.filter(VenueRequest.event_id == e.event_id).all()
+
+        # ✅ VenueRequest uses venue_available_id -> VenueAvailability -> Venue
+        venue_names = []
+        seen = set()
+
+        for vr in venue_reqs:
+            name = None
+
+            # Relationship path (fastest) if available
+            if getattr(vr, "availability", None) and getattr(vr.availability, "venue", None):
+                name = vr.availability.venue.venue_name
+            else:
+                # Fallback path (safe)
+                av = VenueAvailability.query.get(vr.venue_available_id)
+                if av:
+                    v = Venue.query.get(av.venue_id)
+                    if v:
+                        name = v.venue_name
+
+            if name and name not in seen:
+                seen.add(name)
+                venue_names.append(name)
+
+        d = e.to_dict()
+        d["requested_venues"] = venue_names
+        result.append(d)
+
+    return {"event_requests": result}, 200
 
 
 def get_event_request(event_id: int, viewer_id: int | None):
@@ -152,7 +186,6 @@ def get_event_request(event_id: int, viewer_id: int | None):
         return {"event_request": req.to_dict()}, 200
 
     return {"error": "Forbidden"}, 403
-
 
 
 def _require_admin(admin_id: int):
@@ -207,10 +240,7 @@ def decide_event_request(event_id: int, payload: dict):
         ).count()
 
         if approved_venues_count < 1:
-            return {
-                "error": "Event cannot be approved without at least one approved venue request"
-            }, 400
-
+            return {"error": "Event cannot be approved without at least one approved venue request"}, 400
 
     req.status = EventRequestStatus.APPROVED if decision == "APPROVED" else EventRequestStatus.REJECTED
     req.admin_comment = (admin_comment or "").strip() or None
@@ -231,14 +261,14 @@ def decide_event_request(event_id: int, payload: dict):
         notif_msg = f"Your event request '{req.event_name}' has been rejected."
 
     create_notification(
-        user_id=req.user_id,   # requester
+        user_id=req.user_id,
         notification_type=notif_type,
         message=notif_msg
     )
 
     # AUDIT (admin decision)
     log_action(
-        user_id=admin.user_id,  # admin who decides
+        user_id=admin.user_id,
         action_type="EVENT_REQUEST_DECISION",
         entity_type="EventRequest",
         entity_id=req.event_id,
@@ -252,18 +282,19 @@ def decide_event_request(event_id: int, payload: dict):
 
 
 def get_event_calendar(viewer_id: int, role: str):
+    """
+    NOTE: If you are using a separate /calendar blueprint now, this may not be used.
+    Kept here fixed so it won’t crash if called.
+    """
     from ...models.event_request import EventRequest, EventRequestStatus
     from ...models.venue_request import VenueRequest, VenueRequestStatus
-    from ...models.venue import Venue
     from ...models.user import User
 
     viewer = User.query.get(viewer_id)
     if not viewer:
         return {"error": "Viewer not found"}, 404
 
-    q = EventRequest.query.filter(
-        EventRequest.status == EventRequestStatus.APPROVED
-    )
+    q = EventRequest.query.filter(EventRequest.status == EventRequestStatus.APPROVED)
 
     # EO sees only own events
     if role == "EO":
@@ -278,10 +309,23 @@ def get_event_calendar(viewer_id: int, role: str):
             VenueRequest.status == VenueRequestStatus.APPROVED
         ).all()
 
-        venues = [
-            Venue.query.get(vr.venue_id).venue_name
-            for vr in venue_reqs
-        ]
+        venues = []
+        seen = set()
+
+        for vr in venue_reqs:
+            name = None
+            if getattr(vr, "availability", None) and getattr(vr.availability, "venue", None):
+                name = vr.availability.venue.venue_name
+            else:
+                av = VenueAvailability.query.get(vr.venue_available_id)
+                if av:
+                    v = Venue.query.get(av.venue_id)
+                    if v:
+                        name = v.venue_name
+
+            if name and name not in seen:
+                seen.add(name)
+                venues.append(name)
 
         calendar_items.append({
             "id": f"event-{e.event_id}",
@@ -306,7 +350,7 @@ def delete_event_request(event_id: int, payload: dict | None = None):
     req = EventRequest.query.get(event_id)
     if not req:
         return {"error": "Event request not found"}, 404
-    
+
     try:
         actor_id = int((payload or {}).get("actor_id"))
     except (TypeError, ValueError):
