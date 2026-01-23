@@ -11,9 +11,10 @@ import AddEventForm from './component/AddEventForm';
 import Approval from './component/Approval';
 import Venue from './component/Venue';
 import UserManagement from './component/UserManagement';
+import AuditLog from './component/AuditLog';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({name: 'ADMIN',user_role: "Admin"}); //CHANGE THIS TO ENABLE LOGIN
   const [loading, setLoading] = useState(true);
 
   // Load user from localStorage on app mount
@@ -122,6 +123,15 @@ function App() {
           }
         />
 
+        {/* Audit Log - Only for Admin */}
+        <Route
+          path="/audit-log"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AuditLog />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
         
