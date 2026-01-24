@@ -7,6 +7,9 @@ from ...blueprints.audit.services import log_action
 
 
 def _require_admin(admin_id: int):
+    if not admin_id:
+        return None, ({"error": "admin_id is required"}, 400)
+
     admin = User.query.get(admin_id)
     if not admin:
         return None, ({"error": "Admin not found"}, 404)
@@ -21,6 +24,29 @@ def _require_admin(admin_id: int):
     return admin, None
 
 
+def _normalize_role(value: str):
+    """
+    Accepts:
+      - STUDENT / student / Student
+      - EVENT_ORGANIZER / event_organizer / Event Organizer / EVENT ORGANIZER
+      - ADMIN / admin / Admin
+    Returns enum-name: STUDENT / EVENT_ORGANIZER / ADMIN
+    """
+    if not value:
+        return None
+
+    raw = str(value).strip().upper()
+    raw = raw.replace("-", "_").replace(" ", "_")
+
+    # Also handle if frontend sends enum "value" like "Event Organizer"
+    # -> becomes EVENT_ORGANIZER after replace
+
+    if raw in ("STUDENT", "EVENT_ORGANIZER", "ADMIN"):
+        return raw
+
+    return None
+
+
 def create_user(admin_id: int, payload: dict):
     admin, err = _require_admin(admin_id)
     if err:
@@ -30,38 +56,47 @@ def create_user(admin_id: int, payload: dict):
     email = (payload.get("email") or "").strip().lower()
     phone = (payload.get("phone_number") or "").strip()
     password = payload.get("password") or ""
-    role = (payload.get("user_role") or "").strip().upper()
+    role_in = payload.get("user_role")
+
+    role = _normalize_role(role_in)
 
     if not all([full_name, email, phone, password, role]):
         return {"error": "All fields are required"}, 400
 
-    if role not in {"STUDENT", "EVENT_ORGANIZER", "ADMIN"}:
-        return {"error": "Invalid role"}, 400
-
     if User.query.filter_by(email=email).first():
         return {"error": "Email already exists"}, 409
 
-    user = User(
-        full_name=full_name,
-        email=email,
-        phone_number=phone,
-        user_role=UserRole[role],
-        password=generate_password_hash(password),
-        is_active=True
-    )
+    try:
+        user = User(
+            full_name=full_name,
+            email=email,
+            phone_number=phone,              # validated by @validates
+            user_role=UserRole[role],
+            password=generate_password_hash(password),
+            is_active=True,
+        )
 
-    db.session.add(user)
-    db.session.commit()
+        db.session.add(user)
+        db.session.commit()
 
-    log_action(
-        user_id=admin.user_id,
-        action_type="ADMIN_CREATE_USER",
-        entity_type="User",
-        entity_id=user.user_id,
-        new_value=json.dumps(user.to_dict())
-    )
+        log_action(
+            user_id=admin.user_id,
+            action_type="ADMIN_CREATE_USER",
+            entity_type="User",
+            entity_id=user.user_id,
+            new_value=json.dumps(user.to_dict()),
+        )
 
-    return {"message": "User created", "user": user.to_dict()}, 201
+        return {"message": "User created", "user": user.to_dict()}, 201
+
+    except ValueError as ve:
+        db.session.rollback()
+        # This catches your phone_number validator error nicely
+        return {"error": str(ve)}, 400
+
+    except Exception:
+        db.session.rollback()
+        return {"error": "Failed to create user"}, 500
 
 
 def list_users(admin_id: int):
@@ -82,14 +117,14 @@ def set_user_active(admin_id: int, user_id: int, is_active: bool):
     if not user:
         return {"error": "User not found"}, 404
 
-    user.is_active = is_active
+    user.is_active = bool(is_active)
 
     log_action(
         user_id=admin.user_id,
         action_type="ADMIN_SET_USER_ACTIVE",
         entity_type="User",
         entity_id=user.user_id,
-        new_value=str(is_active)
+        new_value=str(bool(is_active)),
     )
 
     db.session.commit()
@@ -101,6 +136,9 @@ def reset_user_password(admin_id: int, user_id: int, new_password: str):
     if err:
         return err
 
+    if not new_password or len(new_password) < 6:
+        return {"error": "new_password is required (min 6 chars)"}, 400
+
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found"}, 404
@@ -111,7 +149,7 @@ def reset_user_password(admin_id: int, user_id: int, new_password: str):
         user_id=admin.user_id,
         action_type="ADMIN_RESET_PASSWORD",
         entity_type="User",
-        entity_id=user.user_id
+        entity_id=user.user_id,
     )
 
     db.session.commit()
@@ -123,15 +161,16 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
     if err:
         return err
 
-    if new_role not in {"STUDENT", "EVENT_ORGANIZER", "ADMIN"}:
+    role = _normalize_role(new_role)
+    if role not in {"STUDENT", "EVENT_ORGANIZER", "ADMIN"}:
         return {"error": "Invalid role"}, 400
 
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found"}, 404
 
-    old_role = user.user_role.value
-    user.user_role = UserRole[new_role]
+    old_role = user.user_role.name  # enum name
+    user.user_role = UserRole[role]
 
     log_action(
         user_id=admin.user_id,
@@ -139,7 +178,7 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
         entity_type="User",
         entity_id=user.user_id,
         old_value=old_role,
-        new_value=new_role
+        new_value=role,
     )
 
     db.session.commit()

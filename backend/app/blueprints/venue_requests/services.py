@@ -10,7 +10,7 @@ from ...models.venue_availability import VenueAvailability
 from ..audit.services import log_action
 from ...blueprints.notifications.services import create_notification
 from ...models.notification import NotificationType
-
+from ...models.booking_request import BookingRequest, BookingStatus
 
 def _ensure_active(user: User, label: str = "Account"):
     """
@@ -113,18 +113,32 @@ def create_venue_request(payload: dict):
     end_datetime = datetime.combine(date, end_time)
 
     # Check for conflicts: approved venue requests only
-    conflicts = VenueAvailability.query.filter(
-        VenueAvailability.venue_id == venue_id
+    # - VenueRequest (EO) PENDING/APPROVED
+    # - BookingRequest (Student) PENDING/APPROVED
+
+    overlaps = VenueAvailability.query.filter(
+        VenueAvailability.venue_id == venue_id,
+        VenueAvailability.start_datetime < end_datetime,
+        VenueAvailability.end_datetime > start_datetime
     ).all()
 
-    for avail in conflicts:
-        if start_datetime < avail.end_datetime and end_datetime > avail.start_datetime:
-            existing_request = VenueRequest.query.filter(
-                VenueRequest.venue_available_id == avail.venue_available_id,
-                VenueRequest.status == VenueRequestStatus.APPROVED
-            ).first()
-            if existing_request:
-                return {"error": "Venue already booked for this time slot"}, 409
+    for avail in overlaps:
+        # Any EO venue request using this slot?
+        existing_vr = VenueRequest.query.filter(
+            VenueRequest.venue_available_id == avail.venue_available_id,
+            VenueRequest.status.in_([VenueRequestStatus.PENDING, VenueRequestStatus.APPROVED])
+        ).first()
+        if existing_vr:
+            return {"error": "Venue already reserved/booked for this time slot (event request exists)."}, 409
+
+        # Any Student booking using this slot?
+        existing_br = BookingRequest.query.filter(
+            BookingRequest.venue_available_id == avail.venue_available_id,
+            BookingRequest.status.in_([BookingStatus.PENDING, BookingStatus.APPROVED])
+        ).first()
+        if existing_br:
+            return {"error": "Venue already reserved/booked for this time slot (student booking exists)."}, 409
+
 
     # Create a new venue availability record for this request
     availability = VenueAvailability(

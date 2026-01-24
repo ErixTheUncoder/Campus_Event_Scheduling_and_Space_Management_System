@@ -17,15 +17,19 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+// small helper for time formatting
 const fmtTime = (d) => format(d, "HH:mm");
 
-export default function EventCalendar() {
+export default function BookingCalendar() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // controlled calendar state
   const [view, setView] = useState("month");
   const [date, setDate] = useState(new Date());
+
+  // modal state
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
@@ -40,15 +44,18 @@ export default function EventCalendar() {
           return;
         }
 
-        const res = await fetch(`/api/calendar/calendar?user_id=${user.user_id}`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Failed to load calendar");
-
-        const onlyEvents = (data.calendar || []).filter(
-          (x) => (x.type || "EVENT") === "EVENT"
+        // booking calendar endpoint
+        const roleParam =
+            (user?.user_role || "").toUpperCase().includes("ADMIN") ? "ADMIN" : "STUDENT";
+        
+        const res = await fetch(
+          `/api/booking-requests/calendar?viewer_id=${user.user_id}&role=${roleParam}`
         );
 
-        setItems(onlyEvents);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Failed to load booking calendar");
+
+        setItems(data.calendar || []);
       } catch (e) {
         setError(e.message || "Error");
       } finally {
@@ -59,6 +66,7 @@ export default function EventCalendar() {
     load();
   }, []);
 
+  // Convert backend items -> react-big-calendar event objects
   const events = useMemo(() => {
     return (items || [])
       .map((it) => {
@@ -68,8 +76,8 @@ export default function EventCalendar() {
         const end = new Date(`${it.date}T${it.end_time}:00`);
 
         return {
-          id: `EVENT-${it.id}`, // unique
-          title: it.title || "(No Title)",
+          id: it.id,
+          title: it.title || "Booking",
           start,
           end,
           resource: it,
@@ -78,6 +86,7 @@ export default function EventCalendar() {
       .filter(Boolean);
   }, [items]);
 
+  // Custom event rendering: Title + Time
   const EventCell = ({ event }) => {
     return (
       <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
@@ -103,7 +112,7 @@ export default function EventCalendar() {
 
   return (
     <div className="content">
-      <h2 style={{ marginTop: 0 }}>Event Calendar View</h2>
+      <h2 style={{ marginTop: 0 }}>Booking Calendar View</h2>
 
       {loading && <div>Loading...</div>}
       {error && <div className="alert alert-error">{error}</div>}
@@ -121,12 +130,15 @@ export default function EventCalendar() {
             date={date}
             onNavigate={setDate}
             popup
-            components={{ event: EventCell }}
+            components={{
+              event: EventCell,
+            }}
             onSelectEvent={(e) => setSelected(e)}
           />
         </div>
       )}
 
+      {/* Modal */}
       {selected && (
         <div className="cal-modal-overlay" onClick={closeModal} role="dialog" aria-modal="true">
           <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
@@ -135,32 +147,31 @@ export default function EventCalendar() {
             </div>
 
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-              <div><b>Type:</b> EVENT</div>
-              <div><b>Date:</b> {selected.resource?.date || format(selected.start, "yyyy-MM-dd")}</div>
-              <div><b>Time:</b> {fmtTime(selected.start)} - {fmtTime(selected.end)}</div>
-              <div><b>Venue:</b> {(selected.resource?.venues || []).join(", ") || "-"}</div>
+              <div>
+                <b>Type:</b> {selected.resource?.type || "BOOKING"}
+              </div>
 
-              <div style={{ marginTop: 6 }}>
-                <b>Purpose:</b>
-                <div
-                  style={{
-                    marginTop: 6,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: "#f8fafc",
-                    border: "1px solid #e5e7eb",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {selected.resource?.purpose || "-"}
-                </div>
+              <div>
+                <b>Date:</b> {selected.resource?.date || format(selected.start, "yyyy-MM-dd")}
+              </div>
+
+              <div>
+                <b>Time:</b> {fmtTime(selected.start)} - {fmtTime(selected.end)}
+              </div>
+
+              <div>
+                <b>Venue:</b> {(selected.resource?.venues || []).join(", ") || "-"}
+              </div>
+
+              <div>
+                <b>Status:</b> {selected.resource?.status || "-"}
               </div>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-              <button className="btn" onClick={closeModal}>Close</button>
+              <button className="btn" onClick={closeModal}>
+                Close
+              </button>
             </div>
           </div>
         </div>

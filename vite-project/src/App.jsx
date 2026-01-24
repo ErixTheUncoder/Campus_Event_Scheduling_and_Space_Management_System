@@ -1,33 +1,39 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import './App.css';
+import { useState, useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import "./App.css";
 
-import Layout from './component/Layout';
-import DashboardContent from './component/DashboardContent';
-import PlaceholderContent from './component/PlaceholderContent';
-import LoginForm from './component/login';
-import Events from './component/Events';
-import AddEventForm from './component/AddEventForm';
-import Approval from './component/Approval';
-import Venue from './component/Venue';
-import UserManagement from './component/UserManagement';
-import AuditLog from './component/AuditLog';
+import Layout from "./component/Layout";
+import DashboardContent from "./component/DashboardContent";
+import PlaceholderContent from "./component/PlaceholderContent";
+import LoginForm from "./component/login";
+import Events from "./component/Events";
+import AddEventForm from "./component/AddEventForm";
+import Approval from "./component/Approval";
+import Venue from "./component/Venue";
+import UserManagement from "./component/UserManagement";
+import AuditLog from "./component/AuditLog";
 import EventCalendar from "./component/EventCalendar";
 import EditEvent from "./component/EditEvent";
 import WithdrawEvent from "./component/WithdrawEvent";
+import Bookings from "./component/Bookings";
+import BookingCalendar from "./component/BookingCalendar";
+import AddBookingForm from "./component/AddBookingForm";
+import EditBooking from "./component/EditBooking";
+import WithdrawBooking from "./component/WithdrawBooking";
+import ScheduleCalendar from "./component/ScheduleCalendar";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {
-        console.error('Failed to parse saved user:', e);
-        localStorage.removeItem('user');
+        console.error("Failed to parse saved user:", e);
+        localStorage.removeItem("user");
       }
     }
     setLoading(false);
@@ -35,12 +41,12 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
   };
 
   if (loading) {
@@ -72,9 +78,18 @@ function App() {
         <Route path="/dashboard" element={<DashboardContent />} />
 
         <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute allowedRoles={["Admin"]}>
+              <ScheduleCalendar />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/events"
           element={
-            <ProtectedRoute allowedRoles={['Admin', 'Event Organizer']}>
+            <ProtectedRoute allowedRoles={["Admin", "Event Organizer"]}>
               <Events user={user} />
             </ProtectedRoute>
           }
@@ -83,7 +98,7 @@ function App() {
         <Route
           path="/events/calendar"
           element={
-            <ProtectedRoute allowedRoles={['Admin', 'Event Organizer', 'Student']}>
+            <ProtectedRoute allowedRoles={["Admin", "Event Organizer"]}>
               <EventCalendar />
             </ProtectedRoute>
           }
@@ -92,7 +107,7 @@ function App() {
         <Route
           path="/events/add"
           element={
-            <ProtectedRoute allowedRoles={['Admin', 'Event Organizer']}>
+            <ProtectedRoute allowedRoles={["Admin", "Event Organizer"]}>
               <AddEventForm />
             </ProtectedRoute>
           }
@@ -102,7 +117,7 @@ function App() {
         <Route
           path="/events/edit"
           element={
-            <ProtectedRoute allowedRoles={['Event Organizer']}>
+            <ProtectedRoute allowedRoles={["Event Organizer"]}>
               <EditEvent user={user} />
             </ProtectedRoute>
           }
@@ -111,8 +126,53 @@ function App() {
         <Route
           path="/events/withdraw"
           element={
-            <ProtectedRoute allowedRoles={['Event Organizer']}>
+            <ProtectedRoute allowedRoles={["Event Organizer"]}>
               <WithdrawEvent user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings"
+          element={
+            <ProtectedRoute allowedRoles={["Student", "Admin"]}>
+              <Bookings user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings/calendar"
+          element={
+            <ProtectedRoute allowedRoles={["Student", "Admin"]}>
+              <BookingCalendar />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings/add"
+          element={
+            <ProtectedRoute allowedRoles={["Student"]}>
+              <AddBookingForm user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings/edit"
+          element={
+            <ProtectedRoute allowedRoles={["Student"]}>
+              <EditBooking user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/bookings/withdraw"
+          element={
+            <ProtectedRoute allowedRoles={["Student"]}>
+              <WithdrawBooking user={user} />
             </ProtectedRoute>
           }
         />
@@ -122,7 +182,7 @@ function App() {
         <Route
           path="/approvals"
           element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={["Admin"]}>
               <Approval />
             </ProtectedRoute>
           }
@@ -131,7 +191,7 @@ function App() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={["Admin"]}>
               <UserManagement />
             </ProtectedRoute>
           }
@@ -140,7 +200,7 @@ function App() {
         <Route
           path="/audit-log"
           element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={["Admin"]}>
               <AuditLog />
             </ProtectedRoute>
           }

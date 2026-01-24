@@ -64,7 +64,6 @@ const AddEventForm = () => {
 
   const closeModal = () => {
     setModal((p) => ({ ...p, open: false }));
-    // If modal was used for success and needs redirect, do it after close
     if (modal.redirectTo) navigate(modal.redirectTo);
   };
 
@@ -74,7 +73,6 @@ const AddEventForm = () => {
     setLoading(true);
 
     try {
-      // Get user from localStorage
       const user = JSON.parse(localStorage.getItem("user") || "{}");
 
       if (!user.user_id) {
@@ -136,7 +134,6 @@ const AddEventForm = () => {
         throw new Error(venueResult.error || "Failed to request venue");
       }
 
-      // Success modal (navigate after closing)
       setModal({
         open: true,
         type: "success",
@@ -147,7 +144,6 @@ const AddEventForm = () => {
     } catch (err) {
       console.error("Submit error:", err);
 
-      // Error modal (keep user on page)
       setModal({
         open: true,
         type: "error",
@@ -161,124 +157,122 @@ const AddEventForm = () => {
   };
 
   return (
-    <div className="table-container">
+    <div className="content">
+    <div className="tableHeader">
       <h2>Create New Event</h2>
+    </div>
 
-      {/* Optional inline error (kept) */}
-      {error && (
-        <div
+      <div className="table-container">
+        {error && (
+          <div
+            style={{
+              color: "red",
+              backgroundColor: "#ffe6e6",
+              padding: "10px",
+              borderRadius: "4px",
+              marginBottom: "1rem",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
           style={{
-            color: "red",
-            backgroundColor: "#ffe6e6",
-            padding: "10px",
-            borderRadius: "4px",
-            marginBottom: "1rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            maxWidth: "400px",
           }}
         >
-          {error}
-        </div>
-      )}
+          <label>
+            Event Name:
+            <input
+              type="text"
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              required
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </label>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          maxWidth: "400px",
-        }}
-      >
-        <label>
-          Event Name:
-          <input
-            type="text"
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </label>
+          <label>
+            Event Description / Purpose:
+            <textarea
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              required
+              style={{
+                width: "100%",
+                padding: "8px",
+                marginTop: "5px",
+                minHeight: "80px",
+              }}
+            />
+          </label>
 
-        <label>
-          Event Description / Purpose:
-          <textarea
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            required
-            style={{
-              width: "100%",
-              padding: "8px",
-              marginTop: "5px",
-              minHeight: "80px",
-            }}
-          />
-        </label>
+          <label>
+            Date:
+            <input
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              required
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </label>
 
-        <label>
-          Date:
-          <input
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </label>
+          <label>
+            Start Time:
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </label>
 
-        <label>
-          Start Time:
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </label>
+          <label>
+            End Time:
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            />
+          </label>
 
-        <label>
-          End Time:
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          />
-        </label>
+          <label>
+            Venue:
+            <select
+              value={venueId}
+              onChange={(e) => setVenueId(e.target.value)}
+              required
+              style={{ width: "100%", padding: "8px", marginTop: "5px" }}
+            >
+              <option value="">-- Select a Venue --</option>
+              {venues.map((venue) => (
+                <option key={venue.venue_id} value={venue.venue_id}>
+                  {venue.venue_name} ({venue.location}) - Capacity: {venue.capacity}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          Venue:
-          <select
-            value={venueId}
-            onChange={(e) => setVenueId(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-          >
-            <option value="">-- Select a Venue --</option>
-            {venues.map((venue) => (
-              <option key={venue.venue_id} value={venue.venue_id}>
-                {venue.venue_name} ({venue.location}) - Capacity: {venue.capacity}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div style={{ marginTop: "1rem", display: "flex", gap: 10 }}>
+            <button type="submit" className="btn" disabled={loading}>
+              {loading ? "Submitting..." : "Submit"}
+            </button>
 
-        <div style={{ marginTop: "1rem", display: "flex", gap: 10 }}>
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? "Submitting..." : "Submit"}
-          </button>
-
-          <button
-            type="button"
-            className="btn"
-            onClick={() => navigate(-1)}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+            <button type="button" className="btn" onClick={() => navigate(-1)} disabled={loading}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Modal */}
       {modal.open && (
@@ -292,9 +286,7 @@ const AddEventForm = () => {
                 gap: 12,
               }}
             >
-              <h3 style={{ margin: 0 }}>
-                {modal.title}
-              </h3>
+              <h3 style={{ margin: 0 }}>{modal.title}</h3>
             </div>
 
             <div
