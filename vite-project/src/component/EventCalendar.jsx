@@ -83,7 +83,15 @@ export default function EventCalendar() {
   const EventCell = ({ event }) => {
     return (
       <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
-        <div style={{ fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 12,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {event.title}
         </div>
         <div style={{ fontSize: 11, opacity: 0.95 }}>
@@ -116,24 +124,16 @@ export default function EventCalendar() {
             onNavigate={setDate}
             popup
             components={{
-              event: EventCell, // show time under title
+              event: EventCell,
             }}
-            onSelectEvent={(e) => {
-              // open modal instead of alert
-              setSelected(e);
-            }}
+            onSelectEvent={(e) => setSelected(e)}
           />
         </div>
       )}
 
       {/* Modal */}
       {selected && (
-        <div
-          className="cal-modal-overlay"
-          onClick={closeModal}
-          role="dialog"
-          aria-modal="true"
-        >
+        <div className="cal-modal-overlay" onClick={closeModal} role="dialog" aria-modal="true">
           <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-header">
               <h2 style={{ margin: 0 }}>{selected.title}</h2>
@@ -143,15 +143,39 @@ export default function EventCalendar() {
               <div>
                 <b>Type:</b> {selected.resource?.type || "-"}
               </div>
+
               <div>
                 <b>Date:</b> {selected.resource?.date || format(selected.start, "yyyy-MM-dd")}
               </div>
+
               <div>
                 <b>Time:</b> {fmtTime(selected.start)} - {fmtTime(selected.end)}
               </div>
+
               <div>
                 <b>Venue:</b> {(selected.resource?.venues || []).join(", ") || "-"}
               </div>
+
+              {/* Purpose (EVENT only) */}
+              {selected.resource?.type === "EVENT" && (
+                <div style={{ marginTop: 6 }}>
+                  <b>Purpose:</b>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: "#f8fafc",
+                      border: "1px solid #e5e7eb",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {selected.resource?.purpose || "-"}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
