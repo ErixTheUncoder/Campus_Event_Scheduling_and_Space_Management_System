@@ -167,6 +167,39 @@ th {
   width: 100%;
 }
 
+/* Current Events - filter */
+.table-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.table-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #7f8c8d;
+}
+
+.table-filter-select {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  outline: none;
+  color:#2c3e50;
+}
+
+.table-filter-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+
 /* Audit Log Table - Enhanced Spacing */
 .audit-table {
   border-collapse: separate;
