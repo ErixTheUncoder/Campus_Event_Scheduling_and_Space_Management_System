@@ -1,19 +1,12 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const Sidebar = ({ user }) => {
-  // Define all menu items with role restrictions
-  const allMenuItems = [
-    { name: 'Dashboard', path: '/dashboard', roles: ['Admin', 'Event Organizer', 'Student'] },
-    { name: 'Events', path: '/events', roles: ['Admin', 'Event Organizer'] },
-    { name: 'Venues', path: '/venues', roles: ['Admin', 'Event Organizer', 'Student'] },
-    { name: 'Approvals', path: '/approvals', roles: ['Admin'] },
-    { name: 'User Management', path: '/users', roles: ['Admin'] },
-    { name: 'Audit Log', path: '/audit-log', roles: ['Admin'] },
-    { name: 'Settings', path: '/settings', roles: ['Admin', 'Event Organizer', 'Student'] }
-  ];
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [open, setOpen] = useState(false); // drawer open/close
-  const [openSection, setOpenSection] = useState({ events: false });
+  const [openSection, setOpenSection] = useState({ events: false, approvals: false });
 
   const BTN_SIZE = 44;
   const EDGE_GAP = 14;
@@ -25,7 +18,6 @@ const Sidebar = ({ user }) => {
   const startPointRef = useRef({ x: 0, y: 0 });
   const didDragRef = useRef(false);
   const DRAG_THRESHOLD = 6; // pixels
-
 
   const role = user?.user_role;
 
@@ -46,7 +38,20 @@ const Sidebar = ({ user }) => {
       },
 
       { type: "link", name: "Venues", path: "/venues", roles: ["Admin", "Event Organizer", "Student"] },
-      { type: "link", name: "Approvals", path: "/approvals", roles: ["Admin"] },
+
+      // Approvals group (scroll-to-section via hash)
+      {
+        type: "group",
+        key: "approvals",
+        name: "Approvals",
+        roles: ["Admin"],
+        children: [
+          { name: "Booking Requests", path: "/approvals#booking", roles: ["Admin"] },
+          { name: "Event Requests", path: "/approvals#event", roles: ["Admin"] },
+          { name: "Venue Requests", path: "/approvals#venue", roles: ["Admin"] },
+        ],
+      },
+
       { type: "link", name: "User Management", path: "/users", roles: ["Admin"] },
       { type: "link", name: "Settings", path: "/settings", roles: ["Admin", "Event Organizer", "Student"] },
     ],
@@ -67,10 +72,16 @@ const Sidebar = ({ user }) => {
     setOpenSection((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Auto-open approvals submenu when on approvals page
+  useEffect(() => {
+    if (location.pathname === "/approvals") {
+      setOpenSection((prev) => ({ ...prev, approvals: true }));
+    }
+  }, [location.pathname]);
+
   const closeDrawer = () => setOpen(false);
 
   // Push layout + disable click-outside close:
-  // When sidebar opens, add a class to body so CSS can shift main content.
   useEffect(() => {
     document.body.classList.toggle("sidebar-open", open);
     return () => document.body.classList.remove("sidebar-open");
@@ -124,6 +135,14 @@ const Sidebar = ({ user }) => {
     };
   }, [dragging]);
 
+  // Only ONE submenu active (hash-based)
+  const isApprovalsHashActive = (hash) => {
+    return location.pathname === "/approvals" && location.hash === hash;
+  };
+
+  const goApprovalsHash = (hash) => {
+    navigate(`/approvals${hash}`);
+  };
 
   return (
     <>
@@ -132,11 +151,10 @@ const Sidebar = ({ user }) => {
         className={`sidebar-hamburger ${open ? "is-open" : ""}`}
         type="button"
         onClick={(e) => {
-          // If user dragged, don't toggle
           if (didDragRef.current) {
             e.preventDefault();
             e.stopPropagation();
-            didDragRef.current = false; // reset for next interaction
+            didDragRef.current = false;
             return;
           }
           setOpen((v) => !v);
@@ -159,8 +177,6 @@ const Sidebar = ({ user }) => {
         {open ? "✕" : "☰"}
       </button>
 
-
-
       {/* Overlay (NO click-to-close; only X should close) */}
       <div className={`sidebar-overlay ${open ? "show" : ""}`} />
 
@@ -177,10 +193,8 @@ const Sidebar = ({ user }) => {
                 <NavLink
                   key={item.name}
                   to={item.path}
-                  end={item.path === "/events"}   // exact match only for /events
+                  end={item.path === "/events"}
                   className={({ isActive }) => `nav-link ${isActive ? "active" : ""} navbar`}
-                  // onClick={closeDrawer}
-                  // (optional) keep open after navigation; remove if you want auto-close when clicking links:
                 >
                   {item.name}
                 </NavLink>
@@ -198,18 +212,52 @@ const Sidebar = ({ user }) => {
 
                 {isOpen && (
                   <div className="sidebar-sub">
-                    {item.children.map((c) => (
-                      <NavLink
-                        key={c.name}
-                        to={c.path}
-                        end={c.path === "/events"}
-                        className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
-                        // (optional) keep open after navigation; remove if you want auto-close:
-                        // onClick={closeDrawer}
-                      >
-                        {c.name}
-                      </NavLink>
-                    ))}
+                    {item.key === "approvals"
+                      ? item.children.map((c) => {
+                          const hash = c.path.includes("#") ? `#${c.path.split("#")[1]}` : "";
+                          const active = location.pathname === "/approvals" && location.hash === hash;
+
+                          return (
+                            <NavLink
+                              key={c.name}
+                              to={c.path}
+                              className={() => `sidebar-sub-link ${active ? "active" : ""}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+
+                                // If already on approvals, just change hash (scroll will work)
+                                if (location.pathname === "/approvals") {
+                                  window.location.hash = hash;
+
+                                  // extra-safe scroll (in case hashchange listener doesn't run)
+                                  const el = document.getElementById(hash.replace("#", ""));
+                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  return;
+                                }
+
+                                // If not on approvals page, navigate first then set hash
+                                navigate("/approvals");
+                                setTimeout(() => {
+                                  window.location.hash = hash;
+                                  const el = document.getElementById(hash.replace("#", ""));
+                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }, 0);
+                              }}
+                            >
+                              {c.name}
+                            </NavLink>
+                          );
+                        })
+                      : item.children.map((c) => (
+                          <NavLink
+                            key={c.name}
+                            to={c.path}
+                            end={c.path === "/events"}
+                            className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
+                          >
+                            {c.name}
+                          </NavLink>
+                        ))}
                   </div>
                 )}
               </div>

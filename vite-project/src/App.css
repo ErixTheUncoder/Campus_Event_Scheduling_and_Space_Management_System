@@ -260,8 +260,31 @@ th {
 }
 .btn:hover { background-color: #2980b9; }
 
-.approval-btn{
-  background-color: var(--accent);
+.approval-btn {
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  margin: 0 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.approval-btn.approve {
+  background-color: var(--success);
+}
+
+.approval-btn.approve:hover {
+  background-color: #229954;
+}
+
+.approval-btn.reject {
+  background-color: var(--rejected);
+}
+
+.approval-btn.reject:hover {
+  background-color: #e74c3c;
 }
 
 .loginBackground{
@@ -584,4 +607,304 @@ body.sidebar-open .main-content {
 /* When closed (default) */
 .main-content {
   transition: margin-left 0.22s ease;
+}
+
+/* =========================
+   Approvals - cleaner UI
+========================= */
+.approvals-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.approvals-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.approvals-title {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #2c3e50;
+  font-weight: 800;
+}
+
+.approvals-subtitle {
+  margin: 0;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+/* Top section nav */
+.approvals-subnav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.approvals-subnav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f6f8fa;
+  border: 1px solid #e5e7eb;
+  color: #2c3e50;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.approvals-subnav-item:hover {
+  background: #eef3f7;
+}
+
+.approvals-count {
+  background: #e8f0fe;
+  color: #1d4ed8;
+  font-weight: 800;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+/* Section cards */
+.approvals-section {
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.03);
+}
+
+.approvals-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.approvals-section h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #2c3e50;
+}
+
+.muted {
+  color: #7f8c8d;
+  margin: 0.25rem 0 0;
+}
+
+.approvals-table-wrap {
+  overflow-x: auto;
+}
+
+/* Make approvals table align nicer */
+.approvals-table th {
+  width: auto; /* prevents weird stretching */
+}
+
+.col-actions {
+  width: 180px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Buttons: approve/reject colors */
+.approval-btn {
+  border: none;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.05s ease-in-out, opacity 0.15s ease;
+}
+
+.approval-btn:active {
+  transform: scale(0.98);
+}
+
+.approval-btn.approve {
+  background: #27ae60;
+  color: #fff;
+}
+
+.approval-btn.reject {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.approval-btn:hover {
+  opacity: 0.92;
+}
+
+/* =========================
+   Modal styling (used by approvals)
+========================= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: min(560px, 96vw);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.modal-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #2c3e50;
+}
+
+.modal-body {
+  padding: 1rem 1.25rem;
+}
+
+.modal-text {
+  margin: 0 0 0.75rem;
+  color: #2c3e50;
+  line-height: 1.45;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modal-label {
+  font-weight: 800;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.modal-required {
+  color: #e74c3c;
+  font-weight: 900;
+  margin-left: 0.35rem;
+}
+
+.modal-optional {
+  color: #7f8c8d;
+  font-weight: 700;
+  margin-left: 0.35rem;
+}
+
+.modal-textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.modal-textarea:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.modal-actions {
+  padding: 0 1.25rem 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.modal-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.modal-btn.secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.modal-btn.primary {
+  background: #3498db;
+  color: #fff;
+}
+
+.modal-btn.danger {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.modal-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* =========================
+   Sidebar submenu styling
+========================= */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nav-parent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-caret {
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+/* Always show submenu (like your screenshot).
+   If you want collapse later, I can change to toggle. */
+.nav-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nav-sublink {
+  text-decoration: none;
+  color: #ecf0f1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+
+.nav-sublink:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  opacity: 1;
 }
