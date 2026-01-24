@@ -6,7 +6,9 @@ from .services import (
     list_event_requests,
     get_event_request,
     decide_event_request,
-    delete_event_request
+    delete_event_request,
+    edit_event_request,
+    withdraw_event_request
 )
 
 
@@ -34,6 +36,22 @@ def get_request(event_id):
     return jsonify(resp), code
 
 
+@event_requests_bp.patch("/<int:event_id>")
+def edit_request(event_id):
+    # EO edits own pending request
+    data = request.get_json(silent=True) or {}
+    resp, code = edit_event_request(event_id, data)
+    return jsonify(resp), code
+
+
+@event_requests_bp.patch("/<int:event_id>/withdraw")
+def withdraw_request(event_id):
+    # EO withdraws own pending request -> CANCELLED
+    data = request.get_json(silent=True) or {}
+    resp, code = withdraw_event_request(event_id, data)
+    return jsonify(resp), code
+
+
 @event_requests_bp.patch("/<int:event_id>/decision")
 def decide_request(event_id):
     data = request.get_json(silent=True) or {}
@@ -46,6 +64,7 @@ def remove_request(event_id):
     data = request.get_json(silent=True) or {}
     resp, code = delete_event_request(event_id, data)
     return jsonify(resp), code
+
 
 @event_requests_bp.get("/calendar")
 def event_calendar():

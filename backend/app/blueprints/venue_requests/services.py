@@ -3,7 +3,7 @@ import json
 
 from ...extensions import db
 from ...models.venue_request import VenueRequest, VenueRequestStatus
-from ...models.event_request import EventRequest
+from ...models.event_request import EventRequest, EventRequestStatus
 from ...models.venue import Venue
 from ...models.user import User, UserRole
 from ...models.venue_availability import VenueAvailability
@@ -50,6 +50,10 @@ def create_venue_request(payload: dict):
 
     if event.user_id != organiser.user_id:
         return {"error": "Forbidden: Not your event request"}, 403
+
+    # cannot request venue for non-pending event
+    if event.status != EventRequestStatus.PENDING:
+        return {"error": "Cannot create venue request: event request is not PENDING"}, 400
 
     # validate venue
     try:
@@ -182,6 +186,17 @@ def decide_venue_request(request_id: int, payload: dict):
     if not vr:
         return {"error": "Venue request not found"}, 404
 
+    # only decide if venue request still pending
+    if vr.status != VenueRequestStatus.PENDING:
+        return {"error": "Only PENDING venue requests can be decided"}, 400
+
+    # parent event must still be pending
+    event = EventRequest.query.get(vr.event_id)
+    if not event:
+        return {"error": "Parent event request not found"}, 404
+    if event.status != EventRequestStatus.PENDING:
+        return {"error": "Cannot decide venue request because event request is not PENDING"}, 400
+
     try:
         admin_id = int(payload.get("admin_id"))
     except (TypeError, ValueError):
@@ -208,7 +223,6 @@ def decide_venue_request(request_id: int, payload: dict):
     # derive venue_id + organiser from availability + event
     availability = VenueAvailability.query.get(vr.venue_available_id)
     venue_id = availability.venue_id if availability else None
-    event = EventRequest.query.get(vr.event_id)
     organiser_id = event.user_id if event else None
 
     # notification to organiser

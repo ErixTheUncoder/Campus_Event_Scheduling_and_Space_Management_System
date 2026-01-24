@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom'; // Import Route tools
+import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
 import Layout from './component/Layout';
@@ -13,13 +13,13 @@ import Venue from './component/Venue';
 import UserManagement from './component/UserManagement';
 import AuditLog from './component/AuditLog';
 import EventCalendar from "./component/EventCalendar";
-
+import EditEvent from "./component/EditEvent";
+import WithdrawEvent from "./component/WithdrawEvent";
 
 function App() {
-  const [user, setUser] = useState(null); //CHANGE THIS TO ENABLE LOGIN
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on app mount
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -33,7 +33,6 @@ function App() {
     setLoading(false);
   }, []);
 
-  // Save user to localStorage whenever it changes
   const handleLogin = (userData) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
@@ -44,49 +43,36 @@ function App() {
     localStorage.removeItem('user');
   };
 
-  // Show loading state while checking authentication
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  // Role-based route guard component
   const ProtectedRoute = ({ children, allowedRoles }) => {
-    if (!user) {
-      return <Navigate to="/login" replace />;
-    }
-    
+    if (!user) return <Navigate to="/login" replace />;
     if (allowedRoles && !allowedRoles.includes(user.user_role)) {
       return <Navigate to="/dashboard" replace />;
     }
-    
     return children;
   };
 
   return (
     <Routes>
-      {/* 1. Public Route: Login */}
-      <Route 
-        path="/login" 
+      <Route
+        path="/login"
         element={
-          user ? <Navigate to="/dashboard" replace /> : 
+          user ? <Navigate to="/dashboard" replace /> :
           <div className="loginBackground">
             <LoginForm onLoginSuccess={handleLogin} />
           </div>
-        } 
+        }
       />
 
-      {/* 2. Protected Routes (Wrapped in Layout) */}
       <Route element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />}>
-        
-        {/* Redirect root "/" to Dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        
-        {/* Actual Pages */}
         <Route path="/dashboard" element={<DashboardContent />} />
 
-        {/* Events - Only for Admin and Event Organizer */}
-        <Route 
-          path="/events" 
+        <Route
+          path="/events"
           element={
             <ProtectedRoute allowedRoles={['Admin', 'Event Organizer']}>
               <Events user={user} />
@@ -94,7 +80,7 @@ function App() {
           }
         />
 
-        <Route 
+        <Route
           path="/events/calendar"
           element={
             <ProtectedRoute allowedRoles={['Admin', 'Event Organizer', 'Student']}>
@@ -103,29 +89,45 @@ function App() {
           }
         />
 
-        <Route 
-          path='/events/add' 
+        <Route
+          path="/events/add"
           element={
             <ProtectedRoute allowedRoles={['Admin', 'Event Organizer']}>
-              <AddEventForm/>
+              <AddEventForm />
             </ProtectedRoute>
           }
         />
 
-        {/* Venues - All roles can access */}
+        {/* edit and withdraw EO only */}
+        <Route
+          path="/events/edit"
+          element={
+            <ProtectedRoute allowedRoles={['Event Organizer']}>
+              <EditEvent user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/events/withdraw"
+          element={
+            <ProtectedRoute allowedRoles={['Event Organizer']}>
+              <WithdrawEvent user={user} />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="/venues" element={<Venue />} />
 
-        {/* Approvals - Only for Admin */}
-        <Route 
-          path="/approvals" 
+        <Route
+          path="/approvals"
           element={
             <ProtectedRoute allowedRoles={['Admin']}>
-              <Approval/>
+              <Approval />
             </ProtectedRoute>
           }
         />
 
-        {/* User Management - Only for Admin */}
         <Route
           path="/users"
           element={
@@ -135,7 +137,6 @@ function App() {
           }
         />
 
-        {/* Audit Log - Only for Admin */}
         <Route
           path="/audit-log"
           element={
@@ -146,7 +147,6 @@ function App() {
         />
 
         <Route path="/settings" element={<PlaceholderContent title="Settings" />} />
-        
       </Route>
     </Routes>
   );
