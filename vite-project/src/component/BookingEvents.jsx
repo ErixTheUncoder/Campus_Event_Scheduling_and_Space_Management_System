@@ -8,6 +8,20 @@ function EventRequestList() {
   // status filter state
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Purpose modal state
+  const [purposeModalOpen, setPurposeModalOpen] = useState(false);
+  const [purposeText, setPurposeText] = useState("");
+
+  const openPurposeModal = (text) => {
+    setPurposeText(text || "");
+    setPurposeModalOpen(true);
+  };
+
+  const closePurposeModal = () => {
+    setPurposeModalOpen(false);
+    setPurposeText("");
+  };
+
   useEffect(() => {
     const fetchEventRequests = async () => {
       try {
@@ -55,7 +69,7 @@ function EventRequestList() {
     );
 
     // nice ordering (if exists)
-    const preferred = ["pending", "approved", "rejected", "confirmed"];
+    const preferred = ["pending", "approved", "rejected", "cancelled", "confirmed"];
     const sorted = [
       ...preferred.filter((s) => set.has(s)),
       ...Array.from(set).filter((s) => !preferred.includes(s)),
@@ -106,11 +120,11 @@ function EventRequestList() {
       <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
         <colgroup>
           <col style={{ width: "22%" }} />
-          <col style={{ width: "12%" }} />
           <col style={{ width: "14%" }} />
-          <col style={{ width: "22%" }} />
-          <col style={{ width: "22%" }} />
-          <col style={{ width: "8%" }} />
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "28%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "10%" }} />
         </colgroup>
 
         <thead>
@@ -148,8 +162,16 @@ function EventRequestList() {
                   {(req.requested_venues || []).join(", ") || "-"}
                 </td>
 
-                <td style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {req.purpose}
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => openPurposeModal(req.purpose)}
+                    disabled={!req.purpose}
+                    title={req.purpose ? "View purpose" : "No purpose"}
+                  >
+                    View
+                  </button>
                 </td>
 
                 <td>
@@ -162,6 +184,27 @@ function EventRequestList() {
           )}
         </tbody>
       </table>
+
+      {/* Purpose Modal */}
+      {purposeModalOpen && (
+        <div className="modal-backdrop" onClick={closePurposeModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3 className="modal-title">Purpose</h3>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{purposeText}</p>
+            </div>
+
+            <div className="modal-actions">
+              <button className="modal-btn secondary" onClick={closePurposeModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

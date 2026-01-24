@@ -162,7 +162,7 @@ const AddEventForm = () => {
 
   return (
     <div className="table-container">
-      <h3>Create New Event</h3>
+      <h2>Create New Event</h2>
 
       {/* Optional inline error (kept) */}
       {error && (

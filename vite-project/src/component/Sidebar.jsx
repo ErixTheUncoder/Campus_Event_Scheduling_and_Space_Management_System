@@ -33,13 +33,16 @@ const Sidebar = ({ user }) => {
         children: [
           { name: "All Events", path: "/events", roles: ["Admin", "Event Organizer"] },
           { name: "Calendar View", path: "/events/calendar", roles: ["Admin", "Event Organizer"] },
-          { name: "Add Event", path: "/events/add", roles: ["Admin", "Event Organizer"] },
+          { name: "Create Event", path: "/events/add", roles: ["Admin", "Event Organizer"] },
+
+          // EO only
+          { name: "Edit Event", path: "/events/edit", roles: ["Event Organizer"] },
+          { name: "Withdraw Event", path: "/events/withdraw", roles: ["Event Organizer"] },
         ],
       },
 
       { type: "link", name: "Venues", path: "/venues", roles: ["Admin", "Event Organizer", "Student"] },
 
-      // Approvals group (scroll-to-section via hash)
       {
         type: "group",
         key: "approvals",
@@ -79,9 +82,14 @@ const Sidebar = ({ user }) => {
     }
   }, [location.pathname]);
 
-  const closeDrawer = () => setOpen(false);
+  // Auto-open events submenu when in any /events page
+  useEffect(() => {
+    if (location.pathname.startsWith("/events")) {
+      setOpenSection((prev) => ({ ...prev, events: true }));
+    }
+  }, [location.pathname]);
 
-  // Push layout + disable click-outside close:
+  // Push layout
   useEffect(() => {
     document.body.classList.toggle("sidebar-open", open);
     return () => document.body.classList.remove("sidebar-open");
@@ -135,18 +143,8 @@ const Sidebar = ({ user }) => {
     };
   }, [dragging]);
 
-  // Only ONE submenu active (hash-based)
-  const isApprovalsHashActive = (hash) => {
-    return location.pathname === "/approvals" && location.hash === hash;
-  };
-
-  const goApprovalsHash = (hash) => {
-    navigate(`/approvals${hash}`);
-  };
-
   return (
     <>
-      {/* Hamburger (draggable, stays on left) */}
       <button
         className={`sidebar-hamburger ${open ? "is-open" : ""}`}
         type="button"
@@ -177,10 +175,8 @@ const Sidebar = ({ user }) => {
         {open ? "✕" : "☰"}
       </button>
 
-      {/* Overlay (NO click-to-close; only X should close) */}
       <div className={`sidebar-overlay ${open ? "show" : ""}`} />
 
-      {/* Drawer sidebar */}
       <aside className={`sidebar drawer ${open ? "open" : ""}`}>
         <div className="sidebar-drawer-top">
           <div className="brand">Campus Scheduler</div>
@@ -225,17 +221,13 @@ const Sidebar = ({ user }) => {
                               onClick={(e) => {
                                 e.preventDefault();
 
-                                // If already on approvals, just change hash (scroll will work)
                                 if (location.pathname === "/approvals") {
                                   window.location.hash = hash;
-
-                                  // extra-safe scroll (in case hashchange listener doesn't run)
                                   const el = document.getElementById(hash.replace("#", ""));
                                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                                   return;
                                 }
 
-                                // If not on approvals page, navigate first then set hash
                                 navigate("/approvals");
                                 setTimeout(() => {
                                   window.location.hash = hash;

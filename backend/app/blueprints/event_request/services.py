@@ -170,7 +170,7 @@ def _require_admin(admin_id: int):
     return admin, None
 
 
-# ✅ NEW: internal helper - require EO and ownership
+# internal helper - require EO and ownership
 def _require_event_organizer_owner(user_id: int, req: EventRequest):
     user = User.query.get(user_id)
     if not user:
@@ -185,7 +185,7 @@ def _require_event_organizer_owner(user_id: int, req: EventRequest):
     return user, None
 
 
-# ✅ NEW: Edit Event Request (EO only, PENDING only)
+# Edit Event Request (EO only, PENDING only)
 def edit_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
@@ -248,7 +248,7 @@ def edit_event_request(event_id: int, payload: dict):
     return {"message": "Event request updated", "event_request": req.to_dict()}, 200
 
 
-# ✅ NEW: Withdraw Event Request (EO only, PENDING only -> CANCELLED)
+# Withdraw Event Request (EO only, PENDING only -> CANCELLED)
 def withdraw_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
@@ -268,9 +268,20 @@ def withdraw_event_request(event_id: int, payload: dict):
 
     old_state = req.to_dict()
 
+    # cancel the event request
     req.status = EventRequestStatus.CANCELLED
     req.admin_comment = "Withdrawn by Event Organizer"
-    # keep approval_date_time as None because admin didn't decide
+    # approval_date_time stays None (admin didn't decide)
+
+    # auto-cancel all linked venue requests
+    linked_venue_requests = VenueRequest.query.filter(
+        VenueRequest.event_id == req.event_id
+    ).all()
+
+    for vr in linked_venue_requests:
+        vr.status = VenueRequestStatus.CANCELLED
+        vr.admin_comment = "Cancelled because Event Request was withdrawn"
+
 
     create_notification(
         user_id=req.user_id,
@@ -291,12 +302,13 @@ def withdraw_event_request(event_id: int, payload: dict):
     return {"message": "Event request withdrawn (cancelled)", "event_request": req.to_dict()}, 200
 
 
+
 def decide_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
         return {"error": "Event request not found"}, 404
 
-    # ✅ NEW: Admin can only decide if still pending
+    # Admin can only decide if still pending
     if req.status != EventRequestStatus.PENDING:
         return {"error": "Only PENDING event requests can be decided"}, 400
 
