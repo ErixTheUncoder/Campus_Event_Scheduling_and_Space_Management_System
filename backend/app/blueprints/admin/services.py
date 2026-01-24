@@ -3,15 +3,21 @@ import json
 
 from ...extensions import db
 from ...models.user import User, UserRole
-from ..audit.services import log_action
+from ...blueprints.audit.services import log_action
 
 
 def _require_admin(admin_id: int):
     admin = User.query.get(admin_id)
     if not admin:
         return None, ({"error": "Admin not found"}, 404)
+
+    # block inactive admins
+    if not getattr(admin, "is_active", True):
+        return None, ({"error": "Account is inactive. Please contact another admin."}, 403)
+
     if admin.user_role != UserRole.ADMIN:
         return None, ({"error": "Forbidden: Admin only"}, 403)
+
     return admin, None
 
 
@@ -138,6 +144,3 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
 
     db.session.commit()
     return {"message": "User role updated"}, 200
-
-
-

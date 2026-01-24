@@ -12,12 +12,28 @@ from ...blueprints.notifications.services import create_notification
 from ...models.notification import NotificationType
 
 
+def _ensure_active(user: User, label: str = "Account"):
+    """
+    Shared guard: block inactive users from protected operations.
+    """
+    if not getattr(user, "is_active", True):
+        return {"error": f"{label} is inactive. Please contact admin."}, 403
+    return None
+
+
 def _require_admin(admin_id: int):
     admin = User.query.get(admin_id)
     if not admin:
         return None, ({"error": "Admin user not found"}, 404)
+
+    # block inactive admins
+    err = _ensure_active(admin, "Admin account")
+    if err:
+        return None, err
+
     if admin.user_role != UserRole.ADMIN:
         return None, ({"error": "Forbidden: Admin only"}, 403)
+
     return admin, None
 
 
@@ -35,7 +51,15 @@ def create_venue_request(payload: dict):
         return {"error": "organiser_id is required"}, 400
 
     organiser = User.query.get(organiser_id)
-    if not organiser or organiser.user_role != UserRole.EVENT_ORGANIZER:
+    if not organiser:
+        return {"error": "User not found"}, 404
+
+    # block inactive organiser
+    err = _ensure_active(organiser, "User account")
+    if err:
+        return err
+
+    if organiser.user_role != UserRole.EVENT_ORGANIZER:
         return {"error": "Forbidden: Event Organizer only"}, 403
 
     # validate event
@@ -76,6 +100,7 @@ def create_venue_request(payload: dict):
 
     try:
         date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        # keep your format as HH:MM
         start_time = datetime.strptime(start_str, "%H:%M").time()
         end_time = datetime.strptime(end_str, "%H:%M").time()
     except ValueError:
@@ -147,13 +172,18 @@ def list_venue_requests(viewer_id: int, filters: dict | None = None):
     if not viewer:
         return {"error": "Viewer not found"}, 404
 
+    # block inactive viewer
+    err = _ensure_active(viewer, "Viewer account")
+    if err:
+        return err
+
     q = VenueRequest.query
 
     if viewer.user_role == UserRole.ADMIN:
         pass
     elif viewer.user_role == UserRole.EVENT_ORGANIZER:
         # EO sees only requests for events they own
-        q = q.join(EventRequest, VenueRequest.event_id == EventRequest.event_id)\
+        q = q.join(EventRequest, VenueRequest.event_id == EventRequest.event_id) \
              .filter(EventRequest.user_id == viewer.user_id)
     else:
         return {"error": "Forbidden"}, 403

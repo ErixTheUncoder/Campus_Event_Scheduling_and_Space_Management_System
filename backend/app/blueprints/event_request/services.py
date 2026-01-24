@@ -8,7 +8,7 @@ from ...models.venue_availability import VenueAvailability
 from ...models.venue import Venue
 from ...models.user import User, UserRole
 
-from ..audit.services import log_action
+from ...blueprints.audit.services import log_action
 from ...blueprints.notifications.services import create_notification
 from ...models.notification import NotificationType
 
@@ -22,6 +22,12 @@ def _parse_time(time_str: str):
     return datetime.strptime(time_str, fmt).time()
 
 
+def _ensure_active(user: User, label: str = "Account"):
+    if not getattr(user, "is_active", True):
+        return {"error": f"{label} is inactive. Please contact admin."}, 403
+    return None
+
+
 def create_event_request(payload: dict):
     try:
         user_id = int(payload.get("user_id"))
@@ -31,6 +37,10 @@ def create_event_request(payload: dict):
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found"}, 404
+
+    err = _ensure_active(user, "User account")
+    if err:
+        return err
 
     if user.user_role != UserRole.EVENT_ORGANIZER:
         return {"error": "Forbidden: Only Event Organizers can create event requests"}, 403
@@ -99,6 +109,10 @@ def list_event_requests(viewer_id: int | None, status: str | None = None):
     if not viewer:
         return {"error": "Viewer not found"}, 404
 
+    err = _ensure_active(viewer, "Viewer account")
+    if err:
+        return err
+
     q = EventRequest.query
 
     if viewer.user_role == UserRole.ADMIN:
@@ -146,6 +160,10 @@ def get_event_request(event_id: int, viewer_id: int | None):
     if not viewer:
         return {"error": "Viewer not found"}, 404
 
+    err = _ensure_active(viewer, "Viewer account")
+    if err:
+        return err
+
     req = EventRequest.query.get(event_id)
     if not req:
         return {"error": "Event request not found"}, 404
@@ -164,17 +182,22 @@ def _require_admin(admin_id: int):
     if not admin:
         return None, ({"error": "Admin user not found"}, 404)
 
+    if not getattr(admin, "is_active", True):
+        return None, ({"error": "Account is inactive. Please contact another admin."}, 403)
+
     if admin.user_role != UserRole.ADMIN:
         return None, ({"error": "Forbidden: Admin only"}, 403)
 
     return admin, None
 
 
-# internal helper - require EO and ownership
 def _require_event_organizer_owner(user_id: int, req: EventRequest):
     user = User.query.get(user_id)
     if not user:
         return None, ({"error": "User not found"}, 404)
+
+    if not getattr(user, "is_active", True):
+        return None, ({"error": "Account is inactive. Please contact admin."}, 403)
 
     if user.user_role != UserRole.EVENT_ORGANIZER:
         return None, ({"error": "Forbidden: Event Organizer only"}, 403)
@@ -185,7 +208,6 @@ def _require_event_organizer_owner(user_id: int, req: EventRequest):
     return user, None
 
 
-# Edit Event Request (EO only, PENDING only)
 def edit_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
@@ -200,11 +222,9 @@ def edit_event_request(event_id: int, payload: dict):
     if err:
         return err
 
-    # must be pending
     if req.status != EventRequestStatus.PENDING:
         return {"error": "Only PENDING event requests can be edited"}, 400
 
-    # allow partial updates (if field missing, keep old)
     event_name = (payload.get("event_name") or req.event_name or "").strip()
     purpose = (payload.get("purpose") or req.purpose or "").strip()
     documents = payload.get("documents", req.documents)
@@ -248,7 +268,6 @@ def edit_event_request(event_id: int, payload: dict):
     return {"message": "Event request updated", "event_request": req.to_dict()}, 200
 
 
-# Withdraw Event Request (EO only, PENDING only -> CANCELLED)
 def withdraw_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
@@ -268,12 +287,9 @@ def withdraw_event_request(event_id: int, payload: dict):
 
     old_state = req.to_dict()
 
-    # cancel the event request
     req.status = EventRequestStatus.CANCELLED
     req.admin_comment = "Withdrawn by Event Organizer"
-    # approval_date_time stays None (admin didn't decide)
 
-    # auto-cancel all linked venue requests
     linked_venue_requests = VenueRequest.query.filter(
         VenueRequest.event_id == req.event_id
     ).all()
@@ -281,7 +297,6 @@ def withdraw_event_request(event_id: int, payload: dict):
     for vr in linked_venue_requests:
         vr.status = VenueRequestStatus.CANCELLED
         vr.admin_comment = "Cancelled because Event Request was withdrawn"
-
 
     create_notification(
         user_id=req.user_id,
@@ -302,13 +317,11 @@ def withdraw_event_request(event_id: int, payload: dict):
     return {"message": "Event request withdrawn (cancelled)", "event_request": req.to_dict()}, 200
 
 
-
 def decide_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
         return {"error": "Event request not found"}, 404
 
-    # Admin can only decide if still pending
     if req.status != EventRequestStatus.PENDING:
         return {"error": "Only PENDING event requests can be decided"}, 400
 
@@ -382,6 +395,10 @@ def get_event_calendar(viewer_id: int, role: str):
     if not viewer:
         return {"error": "Viewer not found"}, 404
 
+    err = _ensure_active(viewer, "Viewer account")
+    if err:
+        return err
+
     q = EventRequest.query.filter(EventRequest.status == EventRequestStatus.APPROVED)
 
     if role == "EO":
@@ -433,6 +450,10 @@ def delete_event_request(event_id: int, payload: dict | None = None):
     actor = User.query.get(actor_id)
     if not actor:
         return {"error": "Actor not found"}, 404
+
+    err = _ensure_active(actor, "Actor account")
+    if err:
+        return err
 
     is_admin = (actor.user_role == UserRole.ADMIN)
     is_owner = (actor.user_id == req.user_id)
