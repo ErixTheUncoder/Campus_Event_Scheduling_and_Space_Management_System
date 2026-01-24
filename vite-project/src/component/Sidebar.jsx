@@ -10,7 +10,6 @@ const Sidebar = ({ user }) => {
     events: false,
     approvals: false,
     bookings: false,
-    calendar: false, // combined calendar section
   });
 
   const BTN_SIZE = 44;
@@ -30,14 +29,8 @@ const Sidebar = ({ user }) => {
     () => [
       { type: "link", name: "Dashboard", path: "/dashboard", roles: ["Admin", "Event Organizer", "Student"] },
 
-      // Admin combined calendar (events + bookings)
-      {
-        type: "group",
-        key: "calendar",
-        name: "Calendar",
-        roles: ["Admin"],
-        children: [{ name: "Schedule Calendar", path: "/calendar", roles: ["Admin"] }],
-      },
+      // Admin combined calendar (events + bookings) - single link (no submenu)
+      { type: "link", name: "Schedule Calendar", path: "/calendar", roles: ["Admin"] },
 
       {
         type: "group",
@@ -111,7 +104,6 @@ const Sidebar = ({ user }) => {
     if (key === "events") return location.pathname.startsWith("/events");
     if (key === "bookings") return location.pathname.startsWith("/bookings");
     if (key === "approvals") return location.pathname === "/approvals";
-    if (key === "calendar") return location.pathname === "/calendar";
     return false;
   };
 
@@ -133,13 +125,6 @@ const Sidebar = ({ user }) => {
   useEffect(() => {
     if (location.pathname.startsWith("/bookings")) {
       setOpenSection((prev) => ({ ...prev, bookings: true }));
-    }
-  }, [location.pathname]);
-
-  // Auto-open calendar submenu when on /calendar
-  useEffect(() => {
-    if (location.pathname === "/calendar") {
-      setOpenSection((prev) => ({ ...prev, calendar: true }));
     }
   }, [location.pathname]);
 
