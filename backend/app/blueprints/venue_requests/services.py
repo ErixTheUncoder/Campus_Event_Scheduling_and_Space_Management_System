@@ -3,7 +3,7 @@ import json
 
 from ...extensions import db
 from ...models.venue_request import VenueRequest, VenueRequestStatus
-from ...models.event_request import EventRequest
+from ...models.event_request import EventRequest, EventRequestStatus
 from ...models.venue import Venue
 from ...models.user import User, UserRole
 from ...models.venue_availability import VenueAvailability
@@ -19,13 +19,6 @@ def _require_admin(admin_id: int):
     if admin.user_role != UserRole.ADMIN:
         return None, ({"error": "Forbidden: Admin only"}, 403)
     return admin, None
-
-
-def _time_overlap(start1, end1, start2, end2):
-    """
-    Returns True if time ranges overlap
-    """
-    return start1 < end2 and start2 < end1
 
 
 def create_venue_request(payload: dict):
@@ -58,6 +51,10 @@ def create_venue_request(payload: dict):
     if event.user_id != organiser.user_id:
         return {"error": "Forbidden: Not your event request"}, 403
 
+    # cannot request venue for non-pending event
+    if event.status != EventRequestStatus.PENDING:
+        return {"error": "Cannot create venue request: event request is not PENDING"}, 400
+
     # validate venue
     try:
         venue_id = int(payload.get("venue_id"))
@@ -87,24 +84,20 @@ def create_venue_request(payload: dict):
     if end_time <= start_time:
         return {"error": "end_time must be later than start_time"}, 400
 
-    # Create start and end datetime from date and times
     start_datetime = datetime.combine(date, start_time)
     end_datetime = datetime.combine(date, end_time)
 
-    # Check for conflicts: find venue availability records for this venue that overlap
+    # Check for conflicts: approved venue requests only
     conflicts = VenueAvailability.query.filter(
         VenueAvailability.venue_id == venue_id
     ).all()
 
     for avail in conflicts:
-        # Check if there's a time overlap
         if start_datetime < avail.end_datetime and end_datetime > avail.start_datetime:
-            # Check if this availability slot has an approved venue request
             existing_request = VenueRequest.query.filter(
                 VenueRequest.venue_available_id == avail.venue_available_id,
                 VenueRequest.status == VenueRequestStatus.APPROVED
             ).first()
-            
             if existing_request:
                 return {"error": "Venue already booked for this time slot"}, 409
 
@@ -115,7 +108,7 @@ def create_venue_request(payload: dict):
         end_datetime=end_datetime
     )
     db.session.add(availability)
-    db.session.flush()  # Get the venue_available_id
+    db.session.flush()
 
     # Create venue request
     vr = VenueRequest(
@@ -124,12 +117,11 @@ def create_venue_request(payload: dict):
         status=VenueRequestStatus.PENDING,
         request_date_time=datetime.utcnow(),
         admin_comment=None,
-        resources_needed=reason  # Store reason in resources_needed field
+        resources_needed=reason
     )
 
     db.session.add(vr)
     db.session.flush()
-
 
     log_action(
         user_id=organiser.user_id,
@@ -160,7 +152,9 @@ def list_venue_requests(viewer_id: int, filters: dict | None = None):
     if viewer.user_role == UserRole.ADMIN:
         pass
     elif viewer.user_role == UserRole.EVENT_ORGANIZER:
-        q = q.filter(VenueRequest.organiser_id == viewer.user_id)
+        # EO sees only requests for events they own
+        q = q.join(EventRequest, VenueRequest.event_id == EventRequest.event_id)\
+             .filter(EventRequest.user_id == viewer.user_id)
     else:
         return {"error": "Forbidden"}, 403
 
@@ -172,10 +166,7 @@ def list_venue_requests(viewer_id: int, filters: dict | None = None):
             try:
                 status_enum = VenueRequestStatus[status.upper()]
             except KeyError:
-                return {
-                    "error": "Invalid status",
-                    "allowed": [s.name for s in VenueRequestStatus]
-                }, 400
+                return {"error": "Invalid status", "allowed": [s.name for s in VenueRequestStatus]}, 400
             q = q.filter(VenueRequest.status == status_enum)
 
         if event_id:
@@ -195,6 +186,17 @@ def decide_venue_request(request_id: int, payload: dict):
     if not vr:
         return {"error": "Venue request not found"}, 404
 
+    # only decide if venue request still pending
+    if vr.status != VenueRequestStatus.PENDING:
+        return {"error": "Only PENDING venue requests can be decided"}, 400
+
+    # parent event must still be pending
+    event = EventRequest.query.get(vr.event_id)
+    if not event:
+        return {"error": "Parent event request not found"}, 404
+    if event.status != EventRequestStatus.PENDING:
+        return {"error": "Cannot decide venue request because event request is not PENDING"}, 400
+
     try:
         admin_id = int(payload.get("admin_id"))
     except (TypeError, ValueError):
@@ -213,42 +215,27 @@ def decide_venue_request(request_id: int, payload: dict):
     if decision == "REJECTED" and not admin_comment:
         return {"error": "remark is required when rejecting"}, 400
 
-    old_state = {
-        "status": vr.status.value,
-        "admin_comment": vr.admin_comment
-    }
+    old_state = {"status": vr.status.value, "admin_comment": vr.admin_comment}
 
-    vr.status = (
-        VenueRequestStatus.APPROVED
-        if decision == "APPROVED"
-        else VenueRequestStatus.REJECTED
-    )
+    vr.status = VenueRequestStatus.APPROVED if decision == "APPROVED" else VenueRequestStatus.REJECTED
     vr.admin_comment = admin_comment or None
 
-    # update availability
-    availability = VenueAvailability.query.filter_by(
-        venue_id=vr.venue_id,
-        date=vr.date
-    ).first()
-
-    if decision == "APPROVED":
-        if availability:
-            availability.is_available = False
-    else:
-        if availability:
-            availability.is_available = True
+    # derive venue_id + organiser from availability + event
+    availability = VenueAvailability.query.get(vr.venue_available_id)
+    venue_id = availability.venue_id if availability else None
+    organiser_id = event.user_id if event else None
 
     # notification to organiser
-    create_notification(
-        user_id=vr.organiser_id,
-        notification_type=(
-            NotificationType.VENUE_REQUEST_APPROVED
-            if decision == "APPROVED"
-            else NotificationType.VENUE_REQUEST_REJECTED
-        ),
-        message=f"Your venue request for venue ID {vr.venue_id} has been {decision.lower()}."
-    )
-
+    if organiser_id:
+        create_notification(
+            user_id=organiser_id,
+            notification_type=(
+                NotificationType.VENUE_REQUEST_APPROVED
+                if decision == "APPROVED"
+                else NotificationType.VENUE_REQUEST_REJECTED
+            ),
+            message=f"Your venue request for venue ID {venue_id} has been {decision.lower()}."
+        )
 
     log_action(
         user_id=admin.user_id,
@@ -256,14 +243,8 @@ def decide_venue_request(request_id: int, payload: dict):
         entity_type="VenueRequest",
         entity_id=vr.venue_request_id,
         old_value=json.dumps(old_state),
-        new_value=json.dumps({
-            "status": vr.status.value,
-            "admin_comment": vr.admin_comment
-        })
+        new_value=json.dumps({"status": vr.status.value, "admin_comment": vr.admin_comment})
     )
 
     db.session.commit()
-    return {
-        "message": f"Venue request {decision.lower()}",
-        "venue_request": vr.to_dict()
-    }, 200
+    return {"message": f"Venue request {decision.lower()}", "venue_request": vr.to_dict()}, 200

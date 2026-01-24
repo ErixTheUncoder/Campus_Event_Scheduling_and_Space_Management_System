@@ -7,7 +7,7 @@ class EventRequestStatus(Enum):
     PENDING = "Pending"
     APPROVED = "Approved"
     REJECTED = "Rejected"
-
+    CANCELLED = "Cancelled"
 
 class EventRequest(db.Model):
     __tablename__ = "event_requests"
