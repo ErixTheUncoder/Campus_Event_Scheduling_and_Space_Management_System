@@ -7,6 +7,7 @@ class VenueRequestStatus(Enum):
     PENDING = "Pending"
     APPROVED = "Approved"
     REJECTED = "Rejected"
+    CANCELLED = "Cancelled"
 
 
 class VenueRequest(db.Model):

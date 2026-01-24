@@ -170,10 +170,135 @@ def _require_admin(admin_id: int):
     return admin, None
 
 
+# ✅ NEW: internal helper - require EO and ownership
+def _require_event_organizer_owner(user_id: int, req: EventRequest):
+    user = User.query.get(user_id)
+    if not user:
+        return None, ({"error": "User not found"}, 404)
+
+    if user.user_role != UserRole.EVENT_ORGANIZER:
+        return None, ({"error": "Forbidden: Event Organizer only"}, 403)
+
+    if req.user_id != user.user_id:
+        return None, ({"error": "Forbidden: Not your event request"}, 403)
+
+    return user, None
+
+
+# ✅ NEW: Edit Event Request (EO only, PENDING only)
+def edit_event_request(event_id: int, payload: dict):
+    req = EventRequest.query.get(event_id)
+    if not req:
+        return {"error": "Event request not found"}, 404
+
+    try:
+        user_id = int(payload.get("user_id"))
+    except (TypeError, ValueError):
+        return {"error": "user_id is required and must be an integer"}, 400
+
+    user, err = _require_event_organizer_owner(user_id, req)
+    if err:
+        return err
+
+    # must be pending
+    if req.status != EventRequestStatus.PENDING:
+        return {"error": "Only PENDING event requests can be edited"}, 400
+
+    # allow partial updates (if field missing, keep old)
+    event_name = (payload.get("event_name") or req.event_name or "").strip()
+    purpose = (payload.get("purpose") or req.purpose or "").strip()
+    documents = payload.get("documents", req.documents)
+
+    event_date_str = (payload.get("event_date") or "").strip()
+    start_time_str = (payload.get("start_time") or "").strip()
+    end_time_str = (payload.get("end_time") or "").strip()
+
+    try:
+        event_date = _parse_date(event_date_str) if event_date_str else req.event_date
+        start_time = _parse_time(start_time_str) if start_time_str else req.start_time
+        end_time = _parse_time(end_time_str) if end_time_str else req.end_time
+    except ValueError:
+        return {"error": "Invalid date/time format. Use event_date=YYYY-MM-DD, time=HH:MM"}, 400
+
+    if not event_name or not event_date or not start_time or not end_time or not purpose:
+        return {"error": "event_name, event_date, start_time, end_time, and purpose are required"}, 400
+
+    if end_time <= start_time:
+        return {"error": "end_time must be later than start_time"}, 400
+
+    old_state = req.to_dict()
+
+    req.event_name = event_name
+    req.event_date = event_date
+    req.start_time = start_time
+    req.end_time = end_time
+    req.purpose = purpose
+    req.documents = documents
+
+    log_action(
+        user_id=user.user_id,
+        action_type="EVENT_REQUEST_EDITED",
+        entity_type="EventRequest",
+        entity_id=req.event_id,
+        old_value=json.dumps(old_state),
+        new_value=json.dumps(req.to_dict())
+    )
+
+    db.session.commit()
+    return {"message": "Event request updated", "event_request": req.to_dict()}, 200
+
+
+# ✅ NEW: Withdraw Event Request (EO only, PENDING only -> CANCELLED)
+def withdraw_event_request(event_id: int, payload: dict):
+    req = EventRequest.query.get(event_id)
+    if not req:
+        return {"error": "Event request not found"}, 404
+
+    try:
+        user_id = int(payload.get("user_id"))
+    except (TypeError, ValueError):
+        return {"error": "user_id is required and must be an integer"}, 400
+
+    user, err = _require_event_organizer_owner(user_id, req)
+    if err:
+        return err
+
+    if req.status != EventRequestStatus.PENDING:
+        return {"error": "Only PENDING event requests can be withdrawn"}, 400
+
+    old_state = req.to_dict()
+
+    req.status = EventRequestStatus.CANCELLED
+    req.admin_comment = "Withdrawn by Event Organizer"
+    # keep approval_date_time as None because admin didn't decide
+
+    create_notification(
+        user_id=req.user_id,
+        notification_type=NotificationType.SYSTEM_ALERT,
+        message=f"Your event request '{req.event_name}' has been withdrawn (cancelled)."
+    )
+
+    log_action(
+        user_id=user.user_id,
+        action_type="EVENT_REQUEST_WITHDRAWN",
+        entity_type="EventRequest",
+        entity_id=req.event_id,
+        old_value=json.dumps(old_state),
+        new_value=json.dumps(req.to_dict())
+    )
+
+    db.session.commit()
+    return {"message": "Event request withdrawn (cancelled)", "event_request": req.to_dict()}, 200
+
+
 def decide_event_request(event_id: int, payload: dict):
     req = EventRequest.query.get(event_id)
     if not req:
         return {"error": "Event request not found"}, 404
+
+    # ✅ NEW: Admin can only decide if still pending
+    if req.status != EventRequestStatus.PENDING:
+        return {"error": "Only PENDING event requests can be decided"}, 400
 
     try:
         admin_id = int(payload.get("admin_id"))
@@ -215,7 +340,6 @@ def decide_event_request(event_id: int, payload: dict):
         "approval_date_time": req.approval_date_time.isoformat()
     }
 
-    # ✅ NotificationType fix (use existing enum)
     notif_msg = (
         f"Your event request '{req.event_name}' has been approved."
         if decision == "APPROVED"
