@@ -6,6 +6,7 @@ from .services import (
     set_user_active,
     reset_user_password,
     change_user_role,
+    get_dashboard_stats,
 )
 
 def _parse_bool(v):
@@ -50,4 +51,11 @@ def admin_change_role(user_id):
     admin_id = request.args.get("admin_id", type=int)
     payload = request.get_json(silent=True) or {}
     resp, code = change_user_role(admin_id, user_id, payload.get("role"))
+    return jsonify(resp), code
+
+@admin_bp.get("/dashboard/stats")
+def admin_dashboard_stats():
+    """Get dashboard statistics for admin"""
+    admin_id = request.args.get("admin_id", type=int)
+    resp, code = get_dashboard_stats(admin_id)
     return jsonify(resp), code
