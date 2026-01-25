@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const modalOverlayStyle = {
   position: "fixed",
@@ -19,13 +19,12 @@ const modalBoxStyle = {
   boxShadow: "0 18px 55px rgba(0,0,0,0.25)",
 };
 
-function WithdrawBooking({ user }) {
-  const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
-  const userId = currentUser?.user_id;
-
-  const [items, setItems] = useState([]);
+const VenueRequestWithdraw = ({ user }) => {
+  const [venueRequests, setVenueRequests] = useState([]);
+  const [events, setEvents] = useState([]);
   const [venues, setVenues] = useState([]);
   const [availabilities, setAvailabilities] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,47 +32,49 @@ function WithdrawBooking({ user }) {
   const [active, setActive] = useState(null);
   const [withdrawing, setWithdrawing] = useState(false);
 
-  const [successModal, setSuccessModal] = useState({
+  const [modal, setModal] = useState({
     open: false,
     title: "",
     message: "",
+    type: "success",
   });
 
-  const fetchPending = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [bRes, vRes, aRes] = await Promise.all([
-        fetch(`/api/booking-requests/?viewer_id=${userId}&status=PENDING`),
-        fetch("/api/venues"),
-        fetch("/api/availability"),
-      ]);
+      const vrRes = await fetch(`/api/venue-requests?viewer_id=${user.user_id}&status=PENDING`);
+      const vrData = await vrRes.json().catch(() => ({}));
+      if (!vrRes.ok) throw new Error(vrData.error || "Failed to fetch venue requests");
+      setVenueRequests(vrData.venue_requests || []);
 
-      const bData = await bRes.json().catch(() => ({}));
-      const vData = await vRes.json().catch(() => ({}));
-      const aData = await aRes.json().catch(() => ({}));
+      const eventsRes = await fetch(`/api/event-requests?viewer_id=${user.user_id}`);
+      const eventsData = await eventsRes.json().catch(() => ({}));
+      if (eventsRes.ok) setEvents(eventsData.event_requests || []);
 
-      if (!bRes.ok) throw new Error(bData.error || `HTTP ${bRes.status}`);
+      const venuesRes = await fetch("/api/venues");
+      const venuesData = await venuesRes.json().catch(() => ({}));
+      if (venuesRes.ok) setVenues(venuesData.venues || []);
 
-      setItems(bData.booking_requests || []);
-      setVenues(vRes.ok ? (vData.venues || []) : []);
-      setAvailabilities(aRes.ok ? (aData.availability || []) : []);
+      const availRes = await fetch("/api/availability");
+      const availData = await availRes.json().catch(() => ({}));
+      if (availRes.ok) setAvailabilities(availData.availability || []);
     } catch (e) {
-      setError(e.message || "Failed to load pending bookings");
+      setError(e.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!userId) return;
-    fetchPending();
+    if (!user.user_id) return;
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [user.user_id]);
 
-  const openConfirm = (bk) => {
-    setActive(bk);
+  const openConfirm = (vr) => {
+    setActive(vr);
     setConfirmOpen(true);
   };
 
@@ -84,34 +85,35 @@ function WithdrawBooking({ user }) {
       setWithdrawing(true);
       setError("");
 
-      const res = await fetch(`/api/booking-requests/${active.booking_id}/withdraw`, {
+      const res = await fetch(`/api/venue-requests/${active.venue_request_id}/withdraw`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({ organiser_id: user.user_id }),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(data.error || "Failed to withdraw");
 
       setConfirmOpen(false);
       setActive(null);
 
-      setSuccessModal({
+      setModal({
         open: true,
+        type: "success",
         title: "Success",
-        message: "Booking withdrawn successfully!",
+        message: "Venue request withdrawn successfully!",
       });
 
-      await fetchPending();
+      await fetchData();
     } catch (e) {
-      setError(e.message || "Failed to withdraw booking");
+      setError(e.message || "Failed to withdraw venue request");
     } finally {
       setWithdrawing(false);
     }
   };
 
-  const closeSuccessModal = () => {
-    setSuccessModal({ open: false, title: "", message: "" });
+  const closeModal = () => {
+    setModal({ open: false, title: "", message: "", type: "success" });
   };
 
   const getVenueName = (venueId) => {
@@ -119,20 +121,25 @@ function WithdrawBooking({ user }) {
     return venue ? `${venue.venue_name} (${venue.location})` : "Unknown Venue";
   };
 
-  const getVenueForBooking = (bk) => {
-    const avail = availabilities.find((a) => a.venue_available_id === bk.venue_available_id);
+  const getEventName = (eventId) => {
+    const event = events.find((e) => e.event_id === eventId);
+    return event ? event.event_name : `Event #${eventId}`;
+  };
+
+  const getVenueForRequest = (vr) => {
+    const avail = availabilities.find((a) => a.venue_available_id === vr.venue_available_id);
     return avail ? getVenueName(avail.venue_id) : "—";
   };
 
-  const getTimeForBooking = (bk) => {
-    const avail = availabilities.find((a) => a.venue_available_id === bk.venue_available_id);
+  const getTimeForRequest = (vr) => {
+    const avail = availabilities.find((a) => a.venue_available_id === vr.venue_available_id);
     return avail ? `${avail.start_time} - ${avail.end_time}` : "—";
   };
 
   return (
     <>
       <div className="tableHeader">
-        <h2>Withdraw Booking (Pending only)</h2>
+        <h2>Withdraw Venue Request (Pending only)</h2>
       </div>
 
       <div className="table-container">
@@ -144,34 +151,29 @@ function WithdrawBooking({ user }) {
           <table style={{ width: "100%", tableLayout: "auto", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th>Booking ID</th>
-                <th>Date</th>
-                <th>Venue</th>
+                <th>Event Name</th>
+                <th>Requested Venue</th>
                 <th>Time</th>
-                <th>Status</th>
+                <th>Purpose</th>
                 <th>Action</th>
               </tr>
             </thead>
-
             <tbody>
-              {items.length === 0 ? (
+              {venueRequests.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center" }}>
-                    No pending booking requests
+                  <td colSpan="5" style={{ textAlign: "center" }}>
+                    No pending venue requests available to withdraw.
                   </td>
                 </tr>
               ) : (
-                items.map((bk) => (
-                  <tr key={bk.booking_id}>
-                    <td>{bk.booking_id}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{bk.booking_date}</td>
-                    <td>{getVenueForBooking(bk)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{getTimeForBooking(bk)}</td>
+                venueRequests.map((vr) => (
+                  <tr key={vr.venue_request_id}>
+                    <td>{getEventName(vr.event_id)}</td>
+                    <td>{getVenueForRequest(vr)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{getTimeForRequest(vr)}</td>
+                    <td>{vr.resources_needed || "—"}</td>
                     <td>
-                      <span className={`badge ${String(bk.status || "").toLowerCase()}`}>{bk.status}</span>
-                    </td>
-                    <td>
-                      <button className="modal-btn danger" onClick={() => openConfirm(bk)}>
+                      <button className="modal-btn danger" onClick={() => openConfirm(vr)}>
                         Withdraw
                       </button>
                     </td>
@@ -192,8 +194,8 @@ function WithdrawBooking({ user }) {
 
             <div className="modal-body">
               <p className="modal-text">
-                Withdraw booking <b>#{active?.booking_id}</b>? <br />
-                This will release the venue availability slot.
+                Withdraw venue request for <b>{active ? getEventName(active.event_id) : ""}</b>? <br />
+                This action cannot be undone.
               </p>
               {error && <div style={{ color: "red" }}>{error}</div>}
             </div>
@@ -210,19 +212,19 @@ function WithdrawBooking({ user }) {
         </div>
       )}
 
-      {successModal.open && (
-        <div style={modalOverlayStyle} onClick={closeSuccessModal}>
+      {modal.open && (
+        <div style={modalOverlayStyle} onClick={closeModal}>
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, color: "#27ae60" }}>
-              {successModal.title}
+            <h3 style={{ marginTop: 0, color: modal.type === "error" ? "#e74c3c" : "#27ae60" }}>
+              {modal.title}
             </h3>
-            <p style={{ marginBottom: 20 }}>{successModal.message}</p>
+            <p style={{ marginBottom: 20 }}>{modal.message}</p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
-                onClick={closeSuccessModal}
+                onClick={closeModal}
                 style={{
                   padding: "10px 20px",
-                  backgroundColor: "#27ae60",
+                  backgroundColor: modal.type === "error" ? "#e74c3c" : "#27ae60",
                   color: "#fff",
                   border: "none",
                   borderRadius: 6,
@@ -238,6 +240,6 @@ function WithdrawBooking({ user }) {
       )}
     </>
   );
-}
+};
 
-export default WithdrawBooking;
+export default VenueRequestWithdraw;

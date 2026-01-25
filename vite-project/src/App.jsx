@@ -21,6 +21,11 @@ import AddBookingForm from "./component/AddBookingForm";
 import EditBooking from "./component/EditBooking";
 import WithdrawBooking from "./component/WithdrawBooking";
 import ScheduleCalendar from "./component/ScheduleCalendar";
+import VenueRequestCreate from "./component/VenueRequestCreate";
+import VenueRequestEdit from "./component/VenueRequestEdit";
+import VenueRequestWithdraw from "./component/VenueRequestWithdraw";
+import VenueRequestManage from "./component/VenueRequestManage";
+import VenueAvailability from "./component/VenueAvailability";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -178,6 +183,52 @@ function App() {
         />
 
         <Route path="/venues" element={<Venue />} />
+
+        {/* Venue Requests Routes */}
+        <Route
+          path="/venue-requests"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer", "Admin"]}>
+              <VenueRequestManage user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/create"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+              <VenueRequestCreate user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/edit"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+              <VenueRequestEdit user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/withdraw"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+              <VenueRequestWithdraw user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-availability"
+          element={
+            <ProtectedRoute allowedRoles={["Admin"]}>
+              <VenueAvailability />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/approvals"

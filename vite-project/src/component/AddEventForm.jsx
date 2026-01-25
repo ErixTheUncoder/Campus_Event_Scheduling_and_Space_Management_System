@@ -263,12 +263,12 @@ const AddEventForm = () => {
           </label>
 
           <div style={{ marginTop: "1rem", display: "flex", gap: 10 }}>
-            <button type="submit" className="btn" disabled={loading}>
-              {loading ? "Submitting..." : "Submit"}
+            <button type="button" className="btn" onClick={() => navigate("/events")} disabled={loading}>
+              Cancel
             </button>
 
-            <button type="button" className="btn" onClick={() => navigate(-1)} disabled={loading}>
-              Cancel
+            <button type="submit" className="btn" disabled={loading}>
+              {loading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </form>

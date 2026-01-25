@@ -11,6 +11,7 @@ from ..audit.services import log_action
 from ...blueprints.notifications.services import create_notification
 from ...models.notification import NotificationType
 from ...models.booking_request import BookingRequest, BookingStatus
+from ..availability.services import is_venue_available
 
 def _ensure_active(user: User, label: str = "Account"):
     """
@@ -112,33 +113,10 @@ def create_venue_request(payload: dict):
     start_datetime = datetime.combine(date, start_time)
     end_datetime = datetime.combine(date, end_time)
 
-    # Check for conflicts: approved venue requests only
-    # - VenueRequest (EO) PENDING/APPROVED
-    # - BookingRequest (Student) PENDING/APPROVED
-
-    overlaps = VenueAvailability.query.filter(
-        VenueAvailability.venue_id == venue_id,
-        VenueAvailability.start_datetime < end_datetime,
-        VenueAvailability.end_datetime > start_datetime
-    ).all()
-
-    for avail in overlaps:
-        # Any EO venue request using this slot?
-        existing_vr = VenueRequest.query.filter(
-            VenueRequest.venue_available_id == avail.venue_available_id,
-            VenueRequest.status.in_([VenueRequestStatus.PENDING, VenueRequestStatus.APPROVED])
-        ).first()
-        if existing_vr:
-            return {"error": "Venue already reserved/booked for this time slot (event request exists)."}, 409
-
-        # Any Student booking using this slot?
-        existing_br = BookingRequest.query.filter(
-            BookingRequest.venue_available_id == avail.venue_available_id,
-            BookingRequest.status.in_([BookingStatus.PENDING, BookingStatus.APPROVED])
-        ).first()
-        if existing_br:
-            return {"error": "Venue already reserved/booked for this time slot (student booking exists)."}, 409
-
+    # Use centralized availability check
+    available, error_msg, conflict_slot_id = is_venue_available(venue_id, start_datetime, end_datetime)
+    if not available:
+        return {"error": error_msg, "conflict_slot_id": conflict_slot_id}, 409
 
     # Create a new venue availability record for this request
     availability = VenueAvailability(
@@ -292,3 +270,187 @@ def decide_venue_request(request_id: int, payload: dict):
 
     db.session.commit()
     return {"message": f"Venue request {decision.lower()}", "venue_request": vr.to_dict()}, 200
+
+
+def edit_venue_request(request_id: int, payload: dict):
+    """
+    Event Organizer only.
+    Edit a PENDING venue request.
+    """
+    vr = VenueRequest.query.get(request_id)
+    if not vr:
+        return {"error": "Venue request not found"}, 404
+
+    try:
+        organiser_id = int(payload.get("organiser_id"))
+    except (TypeError, ValueError):
+        return {"error": "organiser_id is required"}, 400
+
+    organiser = User.query.get(organiser_id)
+    if not organiser:
+        return {"error": "User not found"}, 404
+
+    err = _ensure_active(organiser, "User account")
+    if err:
+        return err
+
+    if organiser.user_role != UserRole.EVENT_ORGANIZER:
+        return {"error": "Forbidden: Event Organizer only"}, 403
+
+    # verify ownership
+    event = EventRequest.query.get(vr.event_id)
+    if not event or event.user_id != organiser.user_id:
+        return {"error": "Forbidden: Not your venue request"}, 403
+
+    # can only edit PENDING
+    if vr.status != VenueRequestStatus.PENDING:
+        return {"error": "Only PENDING venue requests can be edited"}, 400
+
+    # get new venue/time info
+    try:
+        venue_id = int(payload.get("venue_id"))
+    except (TypeError, ValueError):
+        return {"error": "venue_id is required"}, 400
+
+    venue = Venue.query.get(venue_id)
+    if not venue:
+        return {"error": "Venue not found"}, 404
+
+    date_str = (payload.get("date") or "").strip()
+    start_str = (payload.get("start_time") or "").strip()
+    end_str = (payload.get("end_time") or "").strip()
+    reason = (payload.get("reason") or "").strip()
+
+    if not date_str or not start_str or not end_str:
+        return {"error": "date, start_time, and end_time are required"}, 400
+
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        start_time = datetime.strptime(start_str, "%H:%M").time()
+        end_time = datetime.strptime(end_str, "%H:%M").time()
+    except ValueError:
+        return {"error": "Invalid date/time format"}, 400
+
+    if end_time <= start_time:
+        return {"error": "end_time must be later than start_time"}, 400
+
+    start_datetime = datetime.combine(date, start_time)
+    end_datetime = datetime.combine(date, end_time)
+
+    # Use centralized availability check, excluding current request
+    available, error_msg, conflict_slot_id = is_venue_available(
+        venue_id, start_datetime, end_datetime, exclude_request_id=request_id
+    )
+    if not available:
+        return {"error": error_msg, "conflict_slot_id": conflict_slot_id}, 409
+
+    old_state = vr.to_dict()
+
+    # Get old availability record
+    old_availability = VenueAvailability.query.get(vr.venue_available_id)
+
+    # Create new availability record
+    new_availability = VenueAvailability(
+        venue_id=venue_id,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime
+    )
+    db.session.add(new_availability)
+    db.session.flush()
+
+    # Update venue request
+    vr.venue_available_id = new_availability.venue_available_id
+    if reason:
+        vr.resources_needed = reason
+
+    log_action(
+        user_id=organiser.user_id,
+        action_type="VENUE_REQUEST_EDITED",
+        entity_type="VenueRequest",
+        entity_id=vr.venue_request_id,
+        old_value=json.dumps(old_state),
+        new_value=json.dumps(vr.to_dict())
+    )
+
+    db.session.commit()
+    return {"message": "Venue request updated", "venue_request": vr.to_dict()}, 200
+
+
+def withdraw_venue_request(request_id: int, payload: dict):
+    """
+    Event Organizer only.
+    Withdraw (cancel) a PENDING venue request.
+    """
+    vr = VenueRequest.query.get(request_id)
+    if not vr:
+        return {"error": "Venue request not found"}, 404
+
+    try:
+        organiser_id = int(payload.get("organiser_id"))
+    except (TypeError, ValueError):
+        return {"error": "organiser_id is required"}, 400
+
+    organiser = User.query.get(organiser_id)
+    if not organiser:
+        return {"error": "User not found"}, 404
+
+    err = _ensure_active(organiser, "User account")
+    if err:
+        return err
+
+    if organiser.user_role != UserRole.EVENT_ORGANIZER:
+        return {"error": "Forbidden: Event Organizer only"}, 403
+
+    # verify ownership
+    event = EventRequest.query.get(vr.event_id)
+    if not event or event.user_id != organiser.user_id:
+        return {"error": "Forbidden: Not your venue request"}, 403
+
+    # can only withdraw PENDING
+    if vr.status != VenueRequestStatus.PENDING:
+        return {"error": "Only PENDING venue requests can be withdrawn"}, 400
+
+    old_state = vr.to_dict()
+
+    vr.status = VenueRequestStatus.CANCELLED
+
+    log_action(
+        user_id=organiser.user_id,
+        action_type="VENUE_REQUEST_WITHDRAWN",
+        entity_type="VenueRequest",
+        entity_id=vr.venue_request_id,
+        old_value=json.dumps(old_state),
+        new_value=json.dumps(vr.to_dict())
+    )
+
+    db.session.commit()
+    return {"message": "Venue request withdrawn", "venue_request": vr.to_dict()}, 200
+
+
+def get_venue_request(request_id: int, viewer_id: int):
+    """
+    Get a single venue request.
+    Admin can see all, EO can see own only.
+    """
+    viewer = User.query.get(viewer_id)
+    if not viewer:
+        return {"error": "Viewer not found"}, 404
+
+    err = _ensure_active(viewer, "Viewer account")
+    if err:
+        return err
+
+    vr = VenueRequest.query.get(request_id)
+    if not vr:
+        return {"error": "Venue request not found"}, 404
+
+    if viewer.user_role == UserRole.ADMIN:
+        return {"venue_request": vr.to_dict()}, 200
+
+    if viewer.user_role == UserRole.EVENT_ORGANIZER:
+        event = EventRequest.query.get(vr.event_id)
+        if event and event.user_id == viewer.user_id:
+            return {"venue_request": vr.to_dict()}, 200
+        return {"error": "Forbidden: Not your venue request"}, 403
+
+    return {"error": "Forbidden"}, 403

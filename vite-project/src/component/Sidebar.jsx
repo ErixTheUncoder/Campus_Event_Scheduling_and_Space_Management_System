@@ -10,6 +10,7 @@ const Sidebar = ({ user }) => {
     events: false,
     approvals: false,
     bookings: false,
+    venues: false,
   });
 
   const BTN_SIZE = 44;
@@ -65,7 +66,23 @@ const Sidebar = ({ user }) => {
         ],
       },
 
-      { type: "link", name: "Venues", path: "/venues", roles: ["Admin", "Event Organizer", "Student"] },
+      // Venues section with submenu for EO and Admin
+      {
+        type: "group",
+        key: "venues",
+        name: "Venues",
+        roles: ["Event Organizer", "Admin"],
+        children: [
+          { name: "All Venues", path: "/venues", roles: ["Event Organizer", "Admin"] },
+          { name: "All Venue Requests", path: "/venue-requests", roles: ["Event Organizer", "Admin"] },
+          { name: "Venue Availability", path: "/venue-availability", roles: ["Admin"] },
+
+          // EO only actions
+          { name: "Create Venue Request", path: "/venue-requests/create", roles: ["Event Organizer"] },
+          { name: "Edit Venue Request", path: "/venue-requests/edit", roles: ["Event Organizer"] },
+          { name: "Withdraw Venue Request", path: "/venue-requests/withdraw", roles: ["Event Organizer"] },
+        ],
+      },
 
       {
         type: "group",
@@ -103,6 +120,7 @@ const Sidebar = ({ user }) => {
   const isInSection = (key) => {
     if (key === "events") return location.pathname.startsWith("/events");
     if (key === "bookings") return location.pathname.startsWith("/bookings");
+    if (key === "venues") return location.pathname.startsWith("/venues") || location.pathname.startsWith("/venue-");
     if (key === "approvals") return location.pathname === "/approvals";
     return false;
   };
@@ -125,6 +143,13 @@ const Sidebar = ({ user }) => {
   useEffect(() => {
     if (location.pathname.startsWith("/bookings")) {
       setOpenSection((prev) => ({ ...prev, bookings: true }));
+    }
+  }, [location.pathname]);
+
+  // Auto-open venues submenu when in any /venues or /venue- page
+  useEffect(() => {
+    if (location.pathname.startsWith("/venues") || location.pathname.startsWith("/venue-")) {
+      setOpenSection((prev) => ({ ...prev, venues: true }));
     }
   }, [location.pathname]);
 
@@ -287,7 +312,7 @@ const Sidebar = ({ user }) => {
                         })
                       : item.children.map((c) => {
                           // exact-only highlighting for base list pages
-                          const exactOnly = c.path === "/events" || c.path === "/bookings";
+                          const exactOnly = c.path === "/events" || c.path === "/bookings" || c.path === "/venue-requests";
 
                           return (
                             <NavLink

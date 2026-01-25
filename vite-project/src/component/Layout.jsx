@@ -18,9 +18,14 @@ const Layout = ({ user, onLogout }) => {
     "/users": "User Management",
     "/settings": "Settings",
     "/bookings": "Bookings",
-    "/bookings/add": "Create Booking",
-    "/bookings/edit": "Edit Booking",
-    "/bookings/withdraw": "Withdraw Booking",
+    "/bookings/add": "Bookings",
+    "/bookings/edit": "Bookings",
+    "/bookings/withdraw": "Bookings",
+    "/venue-requests": "Venue Request",
+    "/venue-requests/create": "Venue Request",
+    "/venue-requests/edit": "Venue Request",
+    "/venue-requests/withdraw": "Venue Request",
+    "/venue-availability": "Venue Request",
   };
 
   const getTitle = () => {
@@ -37,6 +42,8 @@ const Layout = ({ user, onLogout }) => {
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/dashboard") || path === "/") return "Dashboard";
     if (path.startsWith("/bookings")) return "Bookings";
+    if (path.startsWith("/venue-requests")) return "Venue Request";
+    if (path.startsWith("/venue-availability")) return "Venue Request";
 
     // 3) final fallback
     return "Campus Scheduler";

@@ -48,6 +48,8 @@ body {
   flex-direction: column;
   padding: 1.5rem;
   flex-shrink: 0;
+  overflow-y: auto; /* Enable vertical scrolling */
+  max-height: 100vh; /* Restrict to viewport height */
 }
 
 /* Target the nav element inside the sidebar */

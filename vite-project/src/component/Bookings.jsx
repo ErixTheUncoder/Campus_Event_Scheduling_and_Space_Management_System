@@ -8,7 +8,7 @@ function Bookings({ user }) {
   return (
     <>
       <div className="tableHeader">
-        <h2>Current Bookings</h2>
+        <h2>{isStu ? "My Bookings" : "Current Bookings"}</h2>
 
         <div className="event-actions">
 
