@@ -122,7 +122,7 @@ function App() {
         <Route
           path="/events/edit"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <EditEvent user={user} />
             </ProtectedRoute>
           }
@@ -131,7 +131,7 @@ function App() {
         <Route
           path="/events/withdraw"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <WithdrawEvent user={user} />
             </ProtectedRoute>
           }
@@ -158,7 +158,7 @@ function App() {
         <Route
           path="/bookings/add"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <AddBookingForm user={user} />
             </ProtectedRoute>
           }
@@ -167,7 +167,7 @@ function App() {
         <Route
           path="/bookings/edit"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <EditBooking user={user} />
             </ProtectedRoute>
           }
@@ -176,7 +176,7 @@ function App() {
         <Route
           path="/bookings/withdraw"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <WithdrawBooking user={user} />
             </ProtectedRoute>
           }
@@ -197,7 +197,7 @@ function App() {
         <Route
           path="/venue-requests/create"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <VenueRequestCreate user={user} />
             </ProtectedRoute>
           }
@@ -206,7 +206,7 @@ function App() {
         <Route
           path="/venue-requests/edit"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <VenueRequestEdit user={user} />
             </ProtectedRoute>
           }
@@ -215,7 +215,7 @@ function App() {
         <Route
           path="/venue-requests/withdraw"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <VenueRequestWithdraw user={user} />
             </ProtectedRoute>
           }

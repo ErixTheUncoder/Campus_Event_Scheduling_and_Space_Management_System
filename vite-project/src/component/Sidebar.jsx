@@ -43,9 +43,9 @@ const Sidebar = ({ user }) => {
           { name: "Calendar View", path: "/events/calendar", roles: ["Admin", "Event Organizer"] },
 
           // EO only
-          { name: "Create Event", path: "/events/add", roles: ["Event Organizer"] },
-          { name: "Edit Event", path: "/events/edit", roles: ["Event Organizer"] },
-          { name: "Withdraw Event", path: "/events/withdraw", roles: ["Event Organizer"] },
+          { name: "Create Event", path: "/events/add", roles: ["Event Organizer","Admin"] },
+          { name: "Edit Event", path: "/events/edit", roles: ["Event Organizer","Admin"] },
+          { name: "Withdraw Event", path: "/events/withdraw", roles: ["Event Organizer","Admin"] },
         ],
       },
 
@@ -60,9 +60,9 @@ const Sidebar = ({ user }) => {
           { name: "Calendar View", path: "/bookings/calendar", roles: ["Student", "Admin"] },
 
           // Student only actions
-          { name: "Create Booking", path: "/bookings/add", roles: ["Student"] },
-          { name: "Edit Booking", path: "/bookings/edit", roles: ["Student"] },
-          { name: "Withdraw Booking", path: "/bookings/withdraw", roles: ["Student"] },
+          { name: "Create Booking", path: "/bookings/add", roles: ["Student","Admin"] },
+          { name: "Edit Booking", path: "/bookings/edit", roles: ["Student","Admin"] },
+          { name: "Withdraw Booking", path: "/bookings/withdraw", roles: ["Student","Admin"] },
         ],
       },
 
@@ -78,9 +78,9 @@ const Sidebar = ({ user }) => {
           { name: "Venue Availability", path: "/venue-availability", roles: ["Admin"] },
 
           // EO only actions
-          { name: "Create Venue Request", path: "/venue-requests/create", roles: ["Event Organizer"] },
-          { name: "Edit Venue Request", path: "/venue-requests/edit", roles: ["Event Organizer"] },
-          { name: "Withdraw Venue Request", path: "/venue-requests/withdraw", roles: ["Event Organizer"] },
+          { name: "Create Venue Request", path: "/venue-requests/create", roles: ["Event Organizer","Admin"] },
+          { name: "Edit Venue Request", path: "/venue-requests/edit", roles: ["Event Organizer","Admin"] },
+          { name: "Withdraw Venue Request", path: "/venue-requests/withdraw", roles: ["Event Organizer","Admin"] },
         ],
       },
 
