@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-function EventRequestList() {
+function EventRequestList({ limit }) {
   const [eventRequests, setEventRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,12 +85,18 @@ function EventRequestList() {
 
   // filter rows by status
   const filteredRequests = useMemo(() => {
-    if (statusFilter === "all") return eventRequests;
+    let filtered;
+    if (statusFilter === "all") {
+      filtered = eventRequests;
+    } else {
+      filtered = (eventRequests || []).filter(
+        (r) => String(r.status || "").trim().toLowerCase() === statusFilter
+      );
+    }
 
-    return (eventRequests || []).filter(
-      (r) => String(r.status || "").trim().toLowerCase() === statusFilter
-    );
-  }, [eventRequests, statusFilter]);
+    // Apply limit if provided
+    return limit ? filtered.slice(0, limit) : filtered;
+  }, [eventRequests, statusFilter, limit]);
 
   const toTitle = (s) => (s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1));
 

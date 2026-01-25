@@ -183,3 +183,47 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
 
     db.session.commit()
     return {"message": "User role updated"}, 200
+
+
+def get_dashboard_stats(admin_id: int):
+    """Get dashboard statistics for admin"""
+    admin, err = _require_admin(admin_id)
+    if err:
+        return err
+
+    from ...models.event_request import EventRequest, EventRequestStatus
+    from ...models.venue_request import VenueRequest, VenueRequestStatus
+    from ...models.venue import Venue
+    from datetime import date
+
+    # Count upcoming approved events (event_date >= today)
+    today = date.today()
+    upcoming_events = EventRequest.query.filter(
+        EventRequest.status == EventRequestStatus.APPROVED,
+        EventRequest.event_date >= today
+    ).count()
+
+    # Count pending requests (both event and venue requests)
+    pending_event_requests = EventRequest.query.filter(
+        EventRequest.status == EventRequestStatus.PENDING
+    ).count()
+    
+    pending_venue_requests = VenueRequest.query.filter(
+        VenueRequest.status == VenueRequestStatus.PENDING
+    ).count()
+    
+    total_pending = pending_event_requests + pending_venue_requests
+
+    # Count total venues
+    total_venues = Venue.query.count()
+
+    # Count active users
+    active_users = User.query.filter(User.is_active == True).count()
+
+    return {
+        "upcoming_events": upcoming_events,
+        "pending_requests": total_pending,
+        "total_venues": total_venues,
+        "active_users": active_users
+    }, 200
+
