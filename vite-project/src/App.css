@@ -470,7 +470,7 @@ th {
 
 .login-error {
   color: #e74c3c;
-  font-size: 0.9rem;
+  font-size: 1rem;
   margin: 4px 0;
   text-align: center;
 }
@@ -501,7 +501,7 @@ th {
 .login-help {
   text-align: center;
   color: #7f8c8d;
-  font-size: 0.875rem;
+  font-size: 1rem;
   margin-top: 16px;
   line-height: 1.5;
 }
