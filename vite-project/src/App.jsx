@@ -21,6 +21,11 @@ import AddBookingForm from "./component/AddBookingForm";
 import EditBooking from "./component/EditBooking";
 import WithdrawBooking from "./component/WithdrawBooking";
 import ScheduleCalendar from "./component/ScheduleCalendar";
+import VenueRequestCreate from "./component/VenueRequestCreate";
+import VenueRequestEdit from "./component/VenueRequestEdit";
+import VenueRequestWithdraw from "./component/VenueRequestWithdraw";
+import VenueRequestManage from "./component/VenueRequestManage";
+import VenueAvailability from "./component/VenueAvailability";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -117,7 +122,7 @@ function App() {
         <Route
           path="/events/edit"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <EditEvent user={user} />
             </ProtectedRoute>
           }
@@ -126,7 +131,7 @@ function App() {
         <Route
           path="/events/withdraw"
           element={
-            <ProtectedRoute allowedRoles={["Event Organizer"]}>
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
               <WithdrawEvent user={user} />
             </ProtectedRoute>
           }
@@ -153,7 +158,7 @@ function App() {
         <Route
           path="/bookings/add"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <AddBookingForm user={user} />
             </ProtectedRoute>
           }
@@ -162,7 +167,7 @@ function App() {
         <Route
           path="/bookings/edit"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <EditBooking user={user} />
             </ProtectedRoute>
           }
@@ -171,13 +176,59 @@ function App() {
         <Route
           path="/bookings/withdraw"
           element={
-            <ProtectedRoute allowedRoles={["Student"]}>
+            <ProtectedRoute allowedRoles={["Student","Admin"]}>
               <WithdrawBooking user={user} />
             </ProtectedRoute>
           }
         />
 
         <Route path="/venues" element={<Venue />} />
+
+        {/* Venue Requests Routes */}
+        <Route
+          path="/venue-requests"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer", "Admin"]}>
+              <VenueRequestManage user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/create"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
+              <VenueRequestCreate user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/edit"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
+              <VenueRequestEdit user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-requests/withdraw"
+          element={
+            <ProtectedRoute allowedRoles={["Event Organizer","Admin"]}>
+              <VenueRequestWithdraw user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/venue-availability"
+          element={
+            <ProtectedRoute allowedRoles={["Admin"]}>
+              <VenueAvailability />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/approvals"

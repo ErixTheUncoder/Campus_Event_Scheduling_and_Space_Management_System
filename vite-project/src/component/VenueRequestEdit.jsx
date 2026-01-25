@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const modalOverlayStyle = {
   position: "fixed",
@@ -21,25 +22,25 @@ const modalBoxStyle = {
   overflow: "auto",
 };
 
-function EditBooking({ user }) {
-  const currentUser = user || JSON.parse(localStorage.getItem("user") || "{}");
-  const userId = currentUser?.user_id;
+const VenueRequestEdit = ({ user }) => {
+  const navigate = useNavigate();
 
-  const [bookings, setBookings] = useState([]);
+  const [venueRequests, setVenueRequests] = useState([]);
   const [venues, setVenues] = useState([]);
+  const [events, setEvents] = useState([]);
   const [availabilities, setAvailabilities] = useState([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [saving, setSaving] = useState(false);
-
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [venueId, setVenueId] = useState("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [reason, setReason] = useState("");
 
   const [modal, setModal] = useState({
     open: false,
@@ -48,54 +49,52 @@ function EditBooking({ user }) {
     type: "success",
   });
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const [bRes, vRes, aRes] = await Promise.all([
-        fetch(`/api/booking-requests/?viewer_id=${userId}&status=PENDING`),
-        fetch("/api/venues"),
-        fetch("/api/availability"),
-      ]);
-
-      const bData = await bRes.json().catch(() => ({}));
-      const vData = await vRes.json().catch(() => ({}));
-      const aData = await aRes.json().catch(() => ({}));
-
-      if (!bRes.ok) throw new Error(bData.error || "Failed to fetch bookings");
-      if (!vRes.ok) throw new Error(vData.error || "Failed to fetch venues");
-
-      setBookings(bData.booking_requests || []);
-      setVenues(vData.venues || []);
-      setAvailabilities(aRes.ok ? (aData.availability || []) : []);
-    } catch (e) {
-      setError(e.message || "Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (!userId) return;
+    const fetchData = async () => {
+      try {
+        setPageLoading(true);
+
+        const vrRes = await fetch(`/api/venue-requests?viewer_id=${user.user_id}&status=PENDING`);
+        const vrData = await vrRes.json().catch(() => ({}));
+        if (!vrRes.ok) throw new Error(vrData.error || "Failed to fetch venue requests");
+        setVenueRequests(vrData.venue_requests || []);
+
+        const venuesRes = await fetch("/api/venues");
+        const venuesData = await venuesRes.json().catch(() => ({}));
+        if (!venuesRes.ok) throw new Error(venuesData.error || "Failed to fetch venues");
+        setVenues(venuesData.venues || []);
+
+        const eventsRes = await fetch(`/api/event-requests?viewer_id=${user.user_id}`);
+        const eventsData = await eventsRes.json().catch(() => ({}));
+        if (eventsRes.ok) {
+          setEvents(eventsData.event_requests || []);
+        }
+
+        const availRes = await fetch("/api/availability");
+        const availData = await availRes.json().catch(() => ({}));
+        if (availRes.ok) {
+          setAvailabilities(availData.availability || []);
+        }
+
+        setPageLoading(false);
+      } catch (e) {
+        setError(e.message || "Failed to load data");
+        setPageLoading(false);
+      }
+    };
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [user.user_id]);
 
-  const openEdit = (bk) => {
-    setSelectedBooking(bk);
+  const openEdit = (vr) => {
+    setSelectedRequest(vr);
+    setReason(vr.resources_needed || "");
 
-    const avail = availabilities.find((a) => a.venue_available_id === bk.venue_available_id);
+    const avail = availabilities.find((a) => a.venue_available_id === vr.venue_available_id);
     if (avail) {
       setVenueId(avail.venue_id.toString());
       setDate(avail.date);
       setStartTime(avail.start_time);
       setEndTime(avail.end_time);
-    } else {
-      setDate(bk.booking_date || "");
-      setVenueId("");
-      setStartTime("");
-      setEndTime("");
     }
 
     setEditModalOpen(true);
@@ -105,7 +104,7 @@ function EditBooking({ user }) {
     e.preventDefault();
     setError("");
 
-    if (currentUser.is_active === false) {
+    if (user.is_active === false) {
       setError("Your account is inactive. Please contact admin.");
       return;
     }
@@ -116,43 +115,47 @@ function EditBooking({ user }) {
     }
 
     try {
-      setSaving(true);
+      setLoading(true);
 
       const payload = {
-        user_id: userId,
+        organiser_id: user.user_id,
         venue_id: parseInt(venueId, 10),
-        booking_date: date,
+        date: date,
         start_time: startTime,
         end_time: endTime,
+        reason: reason,
       };
 
-      const res = await fetch(`/api/booking-requests/${selectedBooking.booking_id}`, {
+      const res = await fetch(`/api/venue-requests/${selectedRequest.venue_request_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to update booking");
+      if (!res.ok) throw new Error(data.error || "Failed to update venue request");
 
       setEditModalOpen(false);
       setModal({
         open: true,
         type: "success",
         title: "Success",
-        message: "Booking updated successfully!",
+        message: "Venue request updated successfully!",
       });
 
-      await fetchData();
+      // Refresh list
+      const vrRes = await fetch(`/api/venue-requests?viewer_id=${user.user_id}&status=PENDING`);
+      const vrData = await vrRes.json().catch(() => ({}));
+      if (vrRes.ok) setVenueRequests(vrData.venue_requests || []);
     } catch (e) {
       setModal({
         open: true,
         type: "error",
         title: "Update Failed",
-        message: e.message || "Failed to update booking. Please try again.",
+        message: e.message || "Failed to update venue request. Please try again.",
       });
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -165,24 +168,29 @@ function EditBooking({ user }) {
     return venue ? `${venue.venue_name} (${venue.location})` : "Unknown Venue";
   };
 
-  const getVenueForBooking = (bk) => {
-    const avail = availabilities.find((a) => a.venue_available_id === bk.venue_available_id);
+  const getEventName = (eventId) => {
+    const event = events.find((e) => e.event_id === eventId);
+    return event ? event.event_name : `Event #${eventId}`;
+  };
+
+  const getVenueForRequest = (vr) => {
+    const avail = availabilities.find((a) => a.venue_available_id === vr.venue_available_id);
     return avail ? getVenueName(avail.venue_id) : "—";
   };
 
-  const getTimeForBooking = (bk) => {
-    const avail = availabilities.find((a) => a.venue_available_id === bk.venue_available_id);
+  const getTimeForRequest = (vr) => {
+    const avail = availabilities.find((a) => a.venue_available_id === vr.venue_available_id);
     return avail ? `${avail.start_time} - ${avail.end_time}` : "—";
   };
 
   return (
     <>
       <div className="tableHeader">
-        <h2>Edit Booking (Pending only)</h2>
+        <h2>Edit Venue Request (Pending only)</h2>
       </div>
 
       <div className="table-container">
-        {loading ? (
+        {pageLoading ? (
           <div>Loading...</div>
         ) : error ? (
           <div style={{ color: "red" }}>{error}</div>
@@ -190,31 +198,29 @@ function EditBooking({ user }) {
           <table style={{ width: "100%", tableLayout: "auto", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Venue</th>
+                <th>Event Name</th>
+                <th>Requested Venue</th>
                 <th>Time</th>
-                <th>Status</th>
+                <th>Purpose</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.length === 0 ? (
+              {venueRequests.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: "center" }}>
-                    No pending booking requests available to edit.
+                    No pending venue requests available to edit.
                   </td>
                 </tr>
               ) : (
-                bookings.map((bk) => (
-                  <tr key={bk.booking_id}>
-                    <td style={{ whiteSpace: "nowrap" }}>{bk.booking_date}</td>
-                    <td>{getVenueForBooking(bk)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{getTimeForBooking(bk)}</td>
+                venueRequests.map((vr) => (
+                  <tr key={vr.venue_request_id}>
+                    <td>{getEventName(vr.event_id)}</td>
+                    <td>{getVenueForRequest(vr)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{getTimeForRequest(vr)}</td>
+                    <td>{vr.resources_needed || "—"}</td>
                     <td>
-                      <span className={`badge ${String(bk.status || "").toLowerCase()}`}>{bk.status}</span>
-                    </td>
-                    <td>
-                      <button className="btn" onClick={() => openEdit(bk)}>
+                      <button className="btn" onClick={() => openEdit(vr)}>
                         Edit
                       </button>
                     </td>
@@ -226,10 +232,10 @@ function EditBooking({ user }) {
         )}
       </div>
 
-      {editModalOpen && selectedBooking && (
+      {editModalOpen && selectedRequest && (
         <div style={modalOverlayStyle} onClick={() => setEditModalOpen(false)}>
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, color: "#1976d2" }}>Edit Booking</h3>
+            <h3 style={{ marginTop: 0, color: "#1976d2" }}>Edit Venue Request</h3>
 
             <div
               style={{
@@ -242,10 +248,9 @@ function EditBooking({ user }) {
             >
               <h4 style={{ marginTop: 0, color: "#1976d2" }}>Current Details</h4>
               <div style={{ display: "grid", gap: 8 }}>
+                <div><strong>Event:</strong> {getEventName(selectedRequest.event_id)}</div>
                 {(() => {
-                  const avail = availabilities.find(
-                    (a) => a.venue_available_id === selectedBooking.venue_available_id
-                  );
+                  const avail = availabilities.find((a) => a.venue_available_id === selectedRequest.venue_available_id);
                   if (avail) {
                     return (
                       <>
@@ -255,14 +260,9 @@ function EditBooking({ user }) {
                       </>
                     );
                   }
-                  return (
-                    <>
-                      <div><strong>Booking Date:</strong> {selectedBooking.booking_date || "N/A"}</div>
-                      <div><strong>Slot:</strong> Loading...</div>
-                    </>
-                  );
+                  return <div><strong>Current Slot:</strong> Loading...</div>;
                 })()}
-                <div><strong>Status:</strong> {selectedBooking.status}</div>
+                <div><strong>Reason/Resources:</strong> {selectedRequest.resources_needed || "N/A"}</div>
               </div>
             </div>
 
@@ -308,7 +308,7 @@ function EditBooking({ user }) {
                 />
               </label>
 
-              <label style={{ display: "block", marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 12 }}>
                 End Time:
                 <input
                   type="time"
@@ -319,29 +319,39 @@ function EditBooking({ user }) {
                 />
               </label>
 
+              <label style={{ display: "block", marginBottom: 16 }}>
+                Reason / Resources Needed:
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                  style={{ width: "100%", padding: 8, marginTop: 5 }}
+                />
+              </label>
+
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
                   type="button"
                   onClick={() => setEditModalOpen(false)}
-                  disabled={saving}
-                  style={{ padding: "10px 20px", cursor: saving ? "not-allowed" : "pointer" }}
+                  disabled={loading}
+                  style={{ padding: "10px 20px", cursor: loading ? "not-allowed" : "pointer" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={loading}
                   style={{
                     padding: "10px 20px",
                     backgroundColor: "#3498db",
                     color: "#fff",
                     border: "none",
                     borderRadius: 6,
-                    cursor: saving ? "not-allowed" : "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     fontWeight: 600,
                   }}
                 >
-                  {saving ? "Updating..." : "Update"}
+                  {loading ? "Updating..." : "Update"}
                 </button>
               </div>
             </form>
@@ -377,6 +387,6 @@ function EditBooking({ user }) {
       )}
     </>
   );
-}
+};
 
-export default EditBooking;
+export default VenueRequestEdit;

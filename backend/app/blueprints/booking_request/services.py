@@ -8,6 +8,7 @@ from ...models.venue_availability import VenueAvailability
 from ...models.venue import Venue
 from ...models.user import User, UserRole
 from ..audit.services import log_action
+from ..availability.services import is_venue_available
 
 
 # ------------------------
@@ -219,12 +220,10 @@ def create_booking_request(payload: dict):
     start_dt = datetime.combine(booking_date, start_time)
     end_dt = datetime.combine(booking_date, end_time)
 
-    conflict, conflict_slot_id = _check_overlap_conflict(venue_id, start_dt, end_dt)
-    if conflict:
-        return {
-            "error": "Venue is not available for the selected time (conflict exists).",
-            "conflict_slot_id": conflict_slot_id
-        }, 409
+    # Use centralized availability check
+    available, error_msg, conflict_slot_id = is_venue_available(venue_id, start_dt, end_dt)
+    if not available:
+        return {"error": error_msg, "conflict_slot_id": conflict_slot_id}, 409
 
     availability = VenueAvailability(
         venue_id=venue_id,
@@ -402,9 +401,12 @@ def edit_booking_request(booking_id: int, payload: dict):
     start_dt = datetime.combine(new_date, start_time)
     end_dt = datetime.combine(new_date, end_time)
 
-    conflict, _ = _check_overlap_conflict(venue_id, start_dt, end_dt)
-    if conflict:
-        return {"error": "Venue not available for selected time"}, 409
+    # Use centralized availability check, excluding current booking
+    available, error_msg, conflict_slot_id = is_venue_available(
+        venue_id, start_dt, end_dt, exclude_booking_id=booking_id
+    )
+    if not available:
+        return {"error": error_msg, "conflict_slot_id": conflict_slot_id}, 409
 
     # create new availability row for edit
     new_avail = VenueAvailability(venue_id=venue_id, start_datetime=start_dt, end_datetime=end_dt)

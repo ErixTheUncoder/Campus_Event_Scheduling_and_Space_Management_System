@@ -20,14 +20,17 @@ const modalBoxStyle = {
   boxShadow: "0 18px 55px rgba(0,0,0,0.25)",
 };
 
-const AddBookingForm = () => {
+const VenueRequestCreate = ({ user }) => {
   const navigate = useNavigate();
 
+  const [events, setEvents] = useState([]);
   const [venues, setVenues] = useState([]);
+  const [eventId, setEventId] = useState("");
   const [venueId, setVenueId] = useState("");
-  const [bookingDate, setBookingDate] = useState("");
+  const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [reason, setReason] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -42,38 +45,40 @@ const AddBookingForm = () => {
   });
 
   useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchData = async () => {
       try {
         setPageLoading(true);
-        const res = await fetch("/api/venues");
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Failed to fetch venues");
-        setVenues(data.venues || []);
+
+        const eventsRes = await fetch(`/api/event-requests?viewer_id=${user.user_id}&status=APPROVED`);
+        const eventsData = await eventsRes.json().catch(() => ({}));
+        if (!eventsRes.ok) throw new Error(eventsData.error || "Failed to fetch events");
+        setEvents(eventsData.event_requests || []);
+
+        const venuesRes = await fetch("/api/venues");
+        const venuesData = await venuesRes.json().catch(() => ({}));
+        if (!venuesRes.ok) throw new Error(venuesData.error || "Failed to fetch venues");
+        setVenues(venuesData.venues || []);
+
+        setPageLoading(false);
       } catch (e) {
-        setError(e.message || "Failed to load venues");
-      } finally {
+        setError(e.message || "Failed to load data");
         setPageLoading(false);
       }
     };
-    fetchVenues();
-  }, []);
+    fetchData();
+  }, [user.user_id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!user.user_id) {
-      setError("User not logged in. Please login again.");
-      return;
-    }
     if (user.is_active === false) {
       setError("Your account is inactive. Please contact admin.");
       return;
     }
 
-    if (!venueId || !bookingDate || !startTime || !endTime) {
-      setError("Please fill in venue, date, start time, and end time.");
+    if (!eventId || !venueId || !date || !startTime || !endTime) {
+      setError("Please fill in all required fields.");
       return;
     }
 
@@ -81,35 +86,37 @@ const AddBookingForm = () => {
       setLoading(true);
 
       const payload = {
-        user_id: user.user_id,
-        booking_date: bookingDate,
+        organiser_id: user.user_id,
+        event_id: parseInt(eventId, 10),
         venue_id: parseInt(venueId, 10),
+        date: date,
         start_time: startTime,
         end_time: endTime,
+        reason: reason,
       };
 
-      const res = await fetch("/api/booking-requests", {
+      const res = await fetch("/api/venue-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to create booking request");
+      if (!res.ok) throw new Error(data.error || "Failed to create venue request");
 
       setModal({
         open: true,
         type: "success",
         title: "Success",
-        message: "Booking request submitted successfully!",
-        redirectTo: "/bookings",
+        message: "Venue request created successfully!",
+        redirectTo: "/venue-requests",
       });
     } catch (e) {
       setModal({
         open: true,
         type: "error",
         title: "Request Failed",
-        message: e.message || "Failed to create booking request. Please try again.",
+        message: e.message || "Failed to create venue request. Please try again.",
         redirectTo: null,
       });
     } finally {
@@ -126,7 +133,7 @@ const AddBookingForm = () => {
     <>
       <div className="content">
         <div className="tableHeader">
-          <h2>Create Booking</h2>
+          <h2>Create Venue Request</h2>
         </div>
 
         <div className="table-container">
@@ -137,9 +144,26 @@ const AddBookingForm = () => {
           )}
 
           {pageLoading ? (
-            <div>Loading venues...</div>
+            <div>Loading...</div>
           ) : (
             <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
+              <label style={{ display: "block", marginBottom: 12 }}>
+                Event (Approved Only):
+                <select
+                  value={eventId}
+                  onChange={(e) => setEventId(e.target.value)}
+                  required
+                  style={{ width: "100%", padding: 8, marginTop: 5 }}
+                >
+                  <option value="">-- Select an Event --</option>
+                  {events.map((ev) => (
+                    <option key={ev.event_id} value={ev.event_id}>
+                      {ev.event_name} ({ev.event_date})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <label style={{ display: "block", marginBottom: 12 }}>
                 Venue:
                 <select
@@ -161,8 +185,8 @@ const AddBookingForm = () => {
                 Date:
                 <input
                   type="date"
-                  value={bookingDate}
-                  onChange={(e) => setBookingDate(e.target.value)}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                   required
                   style={{ width: "100%", padding: 8, marginTop: 5 }}
                 />
@@ -179,7 +203,7 @@ const AddBookingForm = () => {
                 />
               </label>
 
-              <label style={{ display: "block", marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 12 }}>
                 End Time:
                 <input
                   type="time"
@@ -190,11 +214,21 @@ const AddBookingForm = () => {
                 />
               </label>
 
+              <label style={{ display: "block", marginBottom: 16 }}>
+                Reason / Resources Needed:
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                  style={{ width: "100%", padding: 8, marginTop: 5 }}
+                />
+              </label>
+
               <div style={{ display: "flex", gap: 10 }}>
                 <button
                   className="btn"
                   type="button"
-                  onClick={() => navigate("/bookings")}
+                  onClick={() => navigate("/venue-requests")}
                   disabled={loading}
                 >
                   Cancel
@@ -239,4 +273,4 @@ const AddBookingForm = () => {
   );
 };
 
-export default AddBookingForm;
+export default VenueRequestCreate;
