@@ -13,12 +13,13 @@ function Events({ user }) {
         <h2>Current Events</h2>
 
         <div className="event-actions">
-          <button className="btn add-Button" onClick={() => navigate("add")}>
-            + Create Event
-          </button>
 
           {isEO && (
             <>
+              <button className="btn add-Button" onClick={() => navigate("add")}>
+                + Create Event
+              </button>
+
               <button className="btn btn-outline" onClick={() => navigate("edit")}>
                 ✏️ Edit Event
               </button>

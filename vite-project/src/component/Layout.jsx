@@ -5,7 +5,7 @@ import Header from "./Header";
 const Layout = ({ user, onLogout }) => {
   const location = useLocation();
 
-  // ✅ Friendly titles for each route
+  // Friendly titles for each route
   const routeTitles = {
     "/dashboard": "Dashboard",
     "/events": "Events",
@@ -17,6 +17,10 @@ const Layout = ({ user, onLogout }) => {
     "/approvals": "Approvals",
     "/users": "User Management",
     "/settings": "Settings",
+    "/bookings": "Bookings",
+    "/bookings/add": "Create Booking",
+    "/bookings/edit": "Edit Booking",
+    "/bookings/withdraw": "Withdraw Booking",
   };
 
   const getTitle = () => {
@@ -32,6 +36,7 @@ const Layout = ({ user, onLogout }) => {
     if (path.startsWith("/users")) return "User Management";
     if (path.startsWith("/settings")) return "Settings";
     if (path.startsWith("/dashboard") || path === "/") return "Dashboard";
+    if (path.startsWith("/bookings")) return "Bookings";
 
     // 3) final fallback
     return "Campus Scheduler";

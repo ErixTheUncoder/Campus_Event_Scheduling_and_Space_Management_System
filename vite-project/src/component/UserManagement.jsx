@@ -20,6 +20,14 @@ function formatRole(roleValue) {
   return match ? match.label : roleValue;
 }
 
+function normalizeRoleFront(roleRaw) {
+  if (!roleRaw) return "STUDENT";
+  return String(roleRaw)
+    .trim()
+    .toUpperCase()
+    .replace(/[-\s]+/g, "_"); // spaces/hyphen -> underscore
+}
+
 function getStoredUser() {
   try {
     const raw = localStorage.getItem("user");
@@ -211,11 +219,17 @@ export default function UserManagement() {
     });
   }
 
+  // send BOTH keys so no matter backend expects role or user_role, it works
   async function changeUserRole(targetUserId, newRole) {
     if (!adminId) throw new Error("Admin ID not found. Please log in again.");
+
     await apiFetch(`/users/${targetUserId}/role?admin_id=${adminId}`, {
       method: "PATCH",
-      body: JSON.stringify({ role: newRole }),
+      body: JSON.stringify({
+        admin_id: adminId,
+        user_role: newRole,
+        role: newRole,
+      }),
     });
   }
 
@@ -227,7 +241,7 @@ export default function UserManagement() {
       email: u.email || "",
       phone: u.phone_number || "",
       isActive: !!u.is_active,
-      role: (u.user_role || "STUDENT").toUpperCase(),
+      role: normalizeRoleFront(u.user_role),
       saving: false,
       error: "",
     });
@@ -245,7 +259,6 @@ export default function UserManagement() {
     try {
       setEditModal((prev) => ({ ...prev, saving: true }));
 
-      // Save role + active (email/name/phone not editable via your current backend endpoints)
       await changeUserRole(editModal.userId, editModal.role);
       await setUserActive(editModal.userId, editModal.isActive);
 
@@ -299,7 +312,6 @@ export default function UserManagement() {
     try {
       setLoading(true);
 
-      // Update one by one (simple + reliable)
       for (const id of selected) {
         await setUserActive(id, nextActive);
       }
@@ -367,85 +379,83 @@ export default function UserManagement() {
 
   return (
     <div className="content">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
-      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}></div>
 
-      {/* Alerts */}
       {globalError && <div className="alert alert-error" style={alertStyleError}>{globalError}</div>}
       {globalSuccess && <div className="alert alert-success" style={alertStyleSuccess}>{globalSuccess}</div>}
 
-      {/* Create User */}
       <div className="card" style={cardStyle}>
         <h2 style={{ marginTop: 0, marginBottom: 5 }}>Create Account</h2>
         <form onSubmit={handleCreateUser} className="form-grid-2">
-            <div style={fieldStyle}>
-                <label style={labelStyle}>Full Name</label>
-                <input
-                className="input form-control-lg"
-                type="text"
-                value={createForm.full_name}
-                onChange={(e) => setCreateForm((p) => ({ ...p, full_name: e.target.value }))}
-                placeholder="e.g., Ali Bin Ahmad"
-                />
-            </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Full Name</label>
+            <input
+              className="input form-control-lg"
+              type="text"
+              value={createForm.full_name}
+              onChange={(e) => setCreateForm((p) => ({ ...p, full_name: e.target.value }))}
+              placeholder="e.g., Ali Bin Ahmad"
+            />
+          </div>
 
-            <div style={fieldStyle}>
-                <label style={labelStyle}>Email</label>
-                <input
-                className="input form-control-lg"
-                type="email"
-                value={createForm.email}
-                onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
-                placeholder="e.g., ali@mmu.edu.my"
-                />
-            </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Email</label>
+            <input
+              className="input form-control-lg"
+              type="email"
+              value={createForm.email}
+              onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+              placeholder="e.g., ali@mmu.edu.my"
+            />
+          </div>
 
-            <div style={fieldStyle}>
-                <label style={labelStyle}>Phone Number</label>
-                <input
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Phone Number</label>
+            <input
                 className="input form-control-lg"
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={30}
                 value={createForm.phone_number}
-                onChange={(e) => setCreateForm((p) => ({ ...p, phone_number: e.target.value }))}
+                onChange={(e) => {
+                    const onlyDigits = e.target.value.replace(/\D/g, "");
+                    setCreateForm((p) => ({ ...p, phone_number: onlyDigits }));
+                }}
                 placeholder="e.g., 0123456789"
-                />
-            </div>
+            />
+          </div>
 
-            <div style={fieldStyle}>
-                <label style={labelStyle}>Temporary Password</label>
-                <input
-                className="input form-control-lg"
-                type="password"
-                value={createForm.password}
-                onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
-                placeholder="Set initial password"
-                />
-            </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Temporary Password</label>
+            <input
+              className="input form-control-lg"
+              type="password"
+              value={createForm.password}
+              onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
+              placeholder="Set initial password"
+            />
+          </div>
 
-            <div style={fieldStyle}>
-                <label style={labelStyle}>Role</label>
-                <select
-                className="input form-control-lg"
-                value={createForm.user_role}
-                onChange={(e) => setCreateForm((p) => ({ ...p, user_role: e.target.value }))}
-                >
-                {ROLES.map((r) => (
-                    <option key={r.value} value={r.value}>
-                    {r.label}
-                    </option>
-                ))}
-                </select>
-            </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Role</label>
+            <select
+              className="input form-control-lg"
+              value={createForm.user_role}
+              onChange={(e) => setCreateForm((p) => ({ ...p, user_role: e.target.value }))}
+            >
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
 
-            <div style={{ display: "flex", alignItems: "end" }}>
-                <button className="btn" type="submit">
-                Create User
-                </button>
-            </div>
+          <div style={{ display: "flex", alignItems: "end" }}>
+            <button className="btn" type="submit">Create User</button>
+          </div>
         </form>
       </div>
 
-      {/* Users Table */}
       <div className="card" style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <h2 style={{ margin: 0 }}>All Users</h2>
@@ -457,43 +467,37 @@ export default function UserManagement() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search (Name, Email, Phone, Role, Status...)"
             style={{
-                width: 520,        // wider
-                maxWidth: "100%",  // responsive on small screens
-                padding: "10px 12px", // taller
-                fontSize: 15,      // bigger text
-                borderRadius: 10,  // optional
+              width: 520,
+              maxWidth: "100%",
+              padding: "10px 12px",
+              fontSize: 15,
+              borderRadius: 10,
             }}
           />
         </div>
 
-        {/* Bulk actions (show only when 2+ users selected) */}
         {selected.size >= 2 && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 10 }}>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
-                Selected: <b>{selected.size}</b>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button className="btn" onClick={() => bulkSetActive(true)} disabled={loading}>
-                    Set Active (Selected)
-                </button>
-                <button className="btn" onClick={() => bulkSetActive(false)} disabled={loading}>
-                    Set Inactive (Selected)
-                </button>
-                </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 10 }}>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>
+              Selected: <b>{selected.size}</b>
             </div>
-            )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn" onClick={() => bulkSetActive(true)} disabled={loading}>
+                Set Active (Selected)
+              </button>
+              <button className="btn" onClick={() => bulkSetActive(false)} disabled={loading}>
+                Set Inactive (Selected)
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={{ overflowX: "auto", marginTop: 12 }}>
-          <table style={{...tableStyle, minWidth: 900 }}>
+          <table style={{ ...tableStyle, minWidth: 900 }}>
             <thead>
               <tr>
                 <th style={{ ...thStyle, width: 44, textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={isAllVisibleSelected()}
-                    onChange={toggleSelectAllVisible}
-                    title="Select all (filtered)"
-                  />
+                  <input type="checkbox" checked={isAllVisibleSelected()} onChange={toggleSelectAllVisible} />
                 </th>
                 <th style={{ ...thStyle, width: 70, whiteSpace: "nowrap" }}>ID</th>
                 <th style={{ ...thStyle, width: 180 }}>Full Name</th>
@@ -509,19 +513,13 @@ export default function UserManagement() {
               {filteredUsers.map((u) => (
                 <tr key={u.user_id}>
                   <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(u.user_id)}
-                      onChange={() => toggleSelectOne(u.user_id)}
-                    />
+                    <input type="checkbox" checked={selected.has(u.user_id)} onChange={() => toggleSelectOne(u.user_id)} />
                   </td>
 
                   <td style={{ ...tdStyle, width: 70, whiteSpace: "nowrap" }}>{u.user_id}</td>
                   <td style={{ ...tdStyle, width: 180 }}>{u.full_name}</td>
                   <td style={{ ...tdStyle, width: 260 }}>{u.email}</td>
                   <td style={{ ...tdStyle, width: 140 }}>{u.phone_number}</td>
-
-
                   <td style={{ ...tdStyle, width: 150, whiteSpace: "nowrap" }}>{formatRole(u.user_role)}</td>
 
                   <td style={tdStyle}>
@@ -545,88 +543,81 @@ export default function UserManagement() {
               ))}
 
               {!loading && filteredUsers.length === 0 && (
-                <tr>
-                  <td style={tdStyle} colSpan={8}>
-                    No users found.
-                  </td>
-                </tr>
+                <tr><td style={tdStyle} colSpan={8}>No users found.</td></tr>
               )}
 
               {loading && (
-                <tr>
-                  <td style={tdStyle} colSpan={8}>
-                    Loading users...
-                  </td>
-                </tr>
+                <tr><td style={tdStyle} colSpan={8}>Loading users...</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Edit User Modal */}
       {editModal.open && (
         <div style={modalOverlayStyle} onClick={closeEditModal}>
           <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ marginTop: 0, marginBottom: 5}}>Edit User</h2>
+            <h2 style={{ marginTop: 0, marginBottom: 5 }}>Edit User</h2>
 
             {editModal.error && <div style={inlineErrorStyle}>{editModal.error}</div>}
 
             <div className="form-grid-2-modal">
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">User ID</label>
-                    <input className="input form-control-lg" value={editModal.userId ?? ""} disabled />
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">User ID</label>
+                <input className="input form-control-lg" value={editModal.userId ?? ""} disabled />
+              </div>
 
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">Full Name</label>
-                    <input className="input form-control-lg" value={editModal.fullName} disabled />
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">Full Name</label>
+                <input className="input form-control-lg" value={editModal.fullName} disabled />
+              </div>
 
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">Email</label>
-                    <input className="input form-control-lg" value={editModal.email} disabled />
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">Email</label>
+                <input className="input form-control-lg" value={editModal.email} disabled />
+              </div>
 
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">Phone</label>
-                    <input className="input form-control-lg" value={editModal.phone} disabled />
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">Phone</label>
+                <input className="input form-control-lg" value={editModal.phone} disabled />
+              </div>
 
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">Role</label>
-                    <select
-                    className="input form-control-lg"
-                    value={editModal.role}
-                    onChange={(e) => setEditModal((p) => ({ ...p, role: e.target.value }))}
-                    >
-                    {ROLES.map((r) => (
-                        <option key={r.value} value={r.value}>
-                        {r.label}
-                        </option>
-                    ))}
-                    </select>
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">Role</label>
+                <select
+                  className="input form-control-lg"
+                  value={editModal.role}
+                  onChange={(e) => setEditModal((p) => ({ ...p, role: e.target.value }))}
+                >
+                  {ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div style={fieldStyle}>
-                    <label className="form-label-lg">Active Status</label>
-                    <select
-                    className="input form-control-lg"
-                    value={editModal.isActive ? "ACTIVE" : "INACTIVE"}
-                    onChange={(e) => setEditModal((p) => ({ ...p, isActive: e.target.value === "ACTIVE" }))}
-                    >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    </select>
-                </div>
+              <div style={fieldStyle}>
+                <label className="form-label-lg">Active Status</label>
+                <select
+                  className="input form-control-lg"
+                  value={editModal.isActive ? "ACTIVE" : "INACTIVE"}
+                  onChange={(e) => setEditModal((p) => ({ ...p, isActive: e.target.value === "ACTIVE" }))}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
             </div>
 
-
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              <button className="btn" onClick={() => openResetPasswordModal({
-                user_id: editModal.userId,
-                full_name: editModal.fullName
-              })}>
+              <button
+                className="btn"
+                onClick={() =>
+                  openResetPasswordModal({
+                    user_id: editModal.userId,
+                    full_name: editModal.fullName,
+                  })
+                }
+              >
                 Reset Password
               </button>
 
@@ -640,9 +631,9 @@ export default function UserManagement() {
               </div>
             </div>
           </div>
-        </div>)}
+        </div>
+      )}
 
-      {/* Reset Password Modal */}
       {pwModal.open && (
         <div style={modalOverlayStyle} onClick={closeResetPasswordModal}>
           <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -704,7 +695,6 @@ const cardStyle = {
 const fieldStyle = { display: "flex", flexDirection: "column", gap: 6 };
 const labelStyle = { fontSize: 15, fontWeight: 500, opacity: 0.9 };
 
-
 const tableStyle = { width: "100%", borderCollapse: "collapse", tableLayout: "auto" };
 const thStyle = {
   textAlign: "left",
@@ -722,7 +712,6 @@ const tdStyle = {
   textOverflow: "ellipsis",
 };
 
-
 const pillStyle = {
   display: "inline-block",
   padding: "6px 10px",
@@ -731,10 +720,7 @@ const pillStyle = {
   fontWeight: 600,
 };
 
-const iconBtnStyle = {
-  padding: "6px 10px",
-  borderRadius: 10,
-};
+const iconBtnStyle = { padding: "6px 10px", borderRadius: 10 };
 
 const alertStyleError = {
   marginTop: 12,

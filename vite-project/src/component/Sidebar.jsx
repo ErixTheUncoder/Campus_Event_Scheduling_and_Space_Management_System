@@ -6,7 +6,11 @@ const Sidebar = ({ user }) => {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false); // drawer open/close
-  const [openSection, setOpenSection] = useState({ events: false, approvals: false });
+  const [openSection, setOpenSection] = useState({
+    events: false,
+    approvals: false,
+    bookings: false,
+  });
 
   const BTN_SIZE = 44;
   const EDGE_GAP = 14;
@@ -25,6 +29,9 @@ const Sidebar = ({ user }) => {
     () => [
       { type: "link", name: "Dashboard", path: "/dashboard", roles: ["Admin", "Event Organizer", "Student"] },
 
+      // Admin combined calendar (events + bookings) - single link (no submenu)
+      { type: "link", name: "Schedule Calendar", path: "/calendar", roles: ["Admin"] },
+
       {
         type: "group",
         key: "events",
@@ -33,11 +40,28 @@ const Sidebar = ({ user }) => {
         children: [
           { name: "All Events", path: "/events", roles: ["Admin", "Event Organizer"] },
           { name: "Calendar View", path: "/events/calendar", roles: ["Admin", "Event Organizer"] },
-          { name: "Create Event", path: "/events/add", roles: ["Admin", "Event Organizer"] },
 
           // EO only
+          { name: "Create Event", path: "/events/add", roles: ["Event Organizer"] },
           { name: "Edit Event", path: "/events/edit", roles: ["Event Organizer"] },
           { name: "Withdraw Event", path: "/events/withdraw", roles: ["Event Organizer"] },
+        ],
+      },
+
+      // Bookings: Student + Admin
+      {
+        type: "group",
+        key: "bookings",
+        name: "Bookings",
+        roles: ["Student", "Admin"],
+        children: [
+          { name: "All Bookings", path: "/bookings", roles: ["Student", "Admin"] },
+          { name: "Calendar View", path: "/bookings/calendar", roles: ["Student", "Admin"] },
+
+          // Student only actions
+          { name: "Create Booking", path: "/bookings/add", roles: ["Student"] },
+          { name: "Edit Booking", path: "/bookings/edit", roles: ["Student"] },
+          { name: "Withdraw Booking", path: "/bookings/withdraw", roles: ["Student"] },
         ],
       },
 
@@ -75,6 +99,14 @@ const Sidebar = ({ user }) => {
     setOpenSection((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // helper: is user currently in a section (for highlighting group button)
+  const isInSection = (key) => {
+    if (key === "events") return location.pathname.startsWith("/events");
+    if (key === "bookings") return location.pathname.startsWith("/bookings");
+    if (key === "approvals") return location.pathname === "/approvals";
+    return false;
+  };
+
   // Auto-open approvals submenu when on approvals page
   useEffect(() => {
     if (location.pathname === "/approvals") {
@@ -86,6 +118,13 @@ const Sidebar = ({ user }) => {
   useEffect(() => {
     if (location.pathname.startsWith("/events")) {
       setOpenSection((prev) => ({ ...prev, events: true }));
+    }
+  }, [location.pathname]);
+
+  // Auto-open bookings submenu when in any /bookings page
+  useEffect(() => {
+    if (location.pathname.startsWith("/bookings")) {
+      setOpenSection((prev) => ({ ...prev, bookings: true }));
     }
   }, [location.pathname]);
 
@@ -189,7 +228,6 @@ const Sidebar = ({ user }) => {
                 <NavLink
                   key={item.name}
                   to={item.path}
-                  end={item.path === "/events"}
                   className={({ isActive }) => `nav-link ${isActive ? "active" : ""} navbar`}
                 >
                   {item.name}
@@ -198,10 +236,15 @@ const Sidebar = ({ user }) => {
             }
 
             const isOpen = !!openSection[item.key];
+            const groupActive = isInSection(item.key);
 
             return (
               <div key={item.key} className="sidebar-group">
-                <button type="button" className="sidebar-group-btn" onClick={() => toggleSection(item.key)}>
+                <button
+                  type="button"
+                  className={`sidebar-group-btn ${groupActive ? "active" : ""}`}
+                  onClick={() => toggleSection(item.key)}
+                >
                   <span>{item.name}</span>
                   <span className="chev">{isOpen ? "▾" : "▸"}</span>
                 </button>
@@ -221,6 +264,7 @@ const Sidebar = ({ user }) => {
                               onClick={(e) => {
                                 e.preventDefault();
 
+                                // already on approvals: just scroll
                                 if (location.pathname === "/approvals") {
                                   window.location.hash = hash;
                                   const el = document.getElementById(hash.replace("#", ""));
@@ -228,6 +272,7 @@ const Sidebar = ({ user }) => {
                                   return;
                                 }
 
+                                // go approvals then scroll
                                 navigate("/approvals");
                                 setTimeout(() => {
                                   window.location.hash = hash;
@@ -240,16 +285,21 @@ const Sidebar = ({ user }) => {
                             </NavLink>
                           );
                         })
-                      : item.children.map((c) => (
-                          <NavLink
-                            key={c.name}
-                            to={c.path}
-                            end={c.path === "/events"}
-                            className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
-                          >
-                            {c.name}
-                          </NavLink>
-                        ))}
+                      : item.children.map((c) => {
+                          // exact-only highlighting for base list pages
+                          const exactOnly = c.path === "/events" || c.path === "/bookings";
+
+                          return (
+                            <NavLink
+                              key={c.name}
+                              to={c.path}
+                              end={exactOnly}
+                              className={({ isActive }) => `sidebar-sub-link ${isActive ? "active" : ""}`}
+                            >
+                              {c.name}
+                            </NavLink>
+                          );
+                        })}
                   </div>
                 )}
               </div>
