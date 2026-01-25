@@ -57,7 +57,7 @@ function Approval() {
     return () => window.removeEventListener("hashchange", scrollToHash);
   }, []);
 
-  // ✅ ESC closes modals
+  // ESC closes modals
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key !== "Escape") return;
@@ -70,7 +70,7 @@ function Approval() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [confirmModal.open, resultModal.open, submitting]);
 
-  // ✅ Lock body scroll when modal open (professional UX)
+  // Lock body scroll when modal open (professional UX)
   useEffect(() => {
     const anyOpen = confirmModal.open || resultModal.open;
     if (anyOpen) {
@@ -140,7 +140,7 @@ function Approval() {
   };
 
   const submitDecision = async () => {
-    if (submitting) return; // ✅ prevent double-submit
+    if (submitting) return; // prevent double-submit
 
     if (!currentUser?.user_id) {
       openResult("error", "Error", "Admin not logged in.");
@@ -391,7 +391,7 @@ function Approval() {
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
-            // ✅ click outside closes
+            // click outside closes
             if (e.target === e.currentTarget && !submitting) closeConfirm();
           }}
         >
@@ -457,7 +457,7 @@ function Approval() {
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
-            // ✅ click outside closes result too
+            // click outside closes result too
             if (e.target === e.currentTarget) closeResult();
           }}
         >

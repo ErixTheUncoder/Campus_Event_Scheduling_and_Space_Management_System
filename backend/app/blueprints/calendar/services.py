@@ -17,6 +17,19 @@ def _require_user(user_id: int):
     return user, None
 
 
+def _get_event_purpose(e: EventRequest):
+    """
+    Safely get purpose/description field from EventRequest
+    (handles different attribute names).
+    """
+    for attr in ("purpose", "event_purpose", "description", "event_description", "resources_needed"):
+        if hasattr(e, attr):
+            val = getattr(e, attr)
+            if val:
+                return val
+    return None
+
+
 def _event_to_calendar_item(e: EventRequest):
     """
     Build calendar item for an APPROVED event request
@@ -30,8 +43,6 @@ def _event_to_calendar_item(e: EventRequest):
     venue_names = []
 
     for vr in venue_reqs:
-        # ✅ VenueRequest has NO venue_id
-        # Use venue_available_id -> VenueAvailability -> Venue
         va = VenueAvailability.query.get(vr.venue_available_id) if vr.venue_available_id else None
         if not va:
             continue
@@ -50,20 +61,20 @@ def _event_to_calendar_item(e: EventRequest):
         "venues": venue_names,
         "owner_id": e.user_id,
         "status": e.status.value if e.status else None,
+        "purpose": _get_event_purpose(e),  # ✅ added
     }
 
 
 def _booking_to_calendar_item(b: BookingRequest):
     """
     Build calendar item for an APPROVED booking request
-    Uses VenueAvailability.start_datetime/end_datetime (based on your create_venue_request code)
+    Uses VenueAvailability.start_datetime/end_datetime
     """
     va = VenueAvailability.query.get(b.venue_available_id) if b.venue_available_id else None
     venue = Venue.query.get(va.venue_id) if va and va.venue_id else None
 
     venue_name = venue.venue_name if venue else "Unknown Venue"
 
-    # ✅ Your VenueAvailability is created with start_datetime/end_datetime
     start_dt = va.start_datetime if va else None
     end_dt = va.end_datetime if va else None
 

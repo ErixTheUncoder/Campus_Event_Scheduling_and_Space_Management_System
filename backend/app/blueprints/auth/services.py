@@ -14,8 +14,13 @@ def login_user(payload: dict):
 
     user = User.query.filter_by(email=email).first()
 
+    # Don’t leak whether the email exists
     if not user or not check_password_hash(user.password, password):
         return {"error": "Invalid credentials"}, 401
+
+    # Block inactive users
+    if not getattr(user, "is_active", True):
+        return {"error": "Account is inactive. Please contact admin."}, 403
 
     log_action(
         user_id=user.user_id,
@@ -46,6 +51,10 @@ def change_password(payload: dict):
     user = User.query.get(user_id)
     if not user:
         return {"error": "User not found"}, 404
+
+    # Block inactive users from using protected APIs
+    if not getattr(user, "is_active", True):
+        return {"error": "Account is inactive. Please contact admin."}, 403
 
     if not check_password_hash(user.password, old_password):
         return {"error": "Old password incorrect"}, 403

@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from . import availability_bp
-from .service import get_all_availability
+from .services import get_all_availability
 
 @availability_bp.get("/")
 def view_available_venues():
