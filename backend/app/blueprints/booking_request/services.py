@@ -296,7 +296,29 @@ def list_booking_requests(viewer_id: int | None, status: str | None = None):
         q = q.filter(BookingRequest.status == status_enum)
 
     items = q.order_by(BookingRequest.request_date_time.desc()).all()
-    return {"booking_requests": [b.to_dict() for b in items]}, 200
+    
+    # Enrich booking data with venue and time information
+    enriched_bookings = []
+    for booking in items:
+        booking_dict = booking.to_dict()
+        
+        # Get venue availability details
+        if booking.venue_available_id:
+            venue_avail = VenueAvailability.query.get(booking.venue_available_id)
+            if venue_avail:
+                booking_dict['start_time'] = venue_avail.start_time
+                booking_dict['end_time'] = venue_avail.end_time
+                booking_dict['purpose'] = venue_avail.purpose
+                
+                # Get venue details
+                if venue_avail.venue_id:
+                    venue = Venue.query.get(venue_avail.venue_id)
+                    if venue:
+                        booking_dict['venue_name'] = venue.venue_name
+        
+        enriched_bookings.append(booking_dict)
+    
+    return {"booking_requests": enriched_bookings}, 200
 
 
 def get_booking_request(booking_id: int, viewer_id: int | None):

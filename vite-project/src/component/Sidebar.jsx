@@ -97,7 +97,7 @@ const Sidebar = ({ user }) => {
       },
 
       { type: "link", name: "User Management", path: "/users", roles: ["Admin"] },
-      { type: "link", name: "Settings", path: "/settings", roles: ["Admin", "Event Organizer", "Student"] },
+      { type: "link", name: "Audit Log", path: "/audit-log", roles: ["Admin"] },
     ],
     []
   );

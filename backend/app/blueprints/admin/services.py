@@ -24,6 +24,26 @@ def _require_admin(admin_id: int):
     return admin, None
 
 
+def _require_dashboard_access(user_id: int):
+    """Validate user has access to dashboard (Admin, Event_Organizer, or Student)"""
+    if not user_id:
+        return None, ({"error": "user_id is required"}, 400)
+
+    user = User.query.get(user_id)
+    if not user:
+        return None, ({"error": "User not found"}, 404)
+
+    # block inactive users
+    if not getattr(user, "is_active", True):
+        return None, ({"error": "Account is inactive."}, 403)
+
+    allowed_roles = [UserRole.ADMIN, UserRole.EVENT_ORGANIZER, UserRole.STUDENT]
+    if user.user_role not in allowed_roles:
+        return None, ({"error": "Access denied"}, 403)
+
+    return user, None
+
+
 def _normalize_role(value: str):
     """
     Accepts:
@@ -185,40 +205,81 @@ def change_user_role(admin_id: int, user_id: int, new_role: str):
     return {"message": "User role updated"}, 200
 
 
-def get_dashboard_stats(admin_id: int):
-    """Get dashboard statistics for admin"""
-    admin, err = _require_admin(admin_id)
+def get_dashboard_stats(user_id: int):
+    """Get dashboard statistics - filtered by user role"""
+    user, err = _require_dashboard_access(user_id)
     if err:
         return err
 
     from ...models.event_request import EventRequest, EventRequestStatus
     from ...models.venue_request import VenueRequest, VenueRequestStatus
+    from ...models.booking_request import BookingRequest, BookingStatus
     from ...models.venue import Venue
     from datetime import date
 
-    # Count upcoming approved events (event_date >= today)
     today = date.today()
-    upcoming_events = EventRequest.query.filter(
-        EventRequest.status == EventRequestStatus.APPROVED,
-        EventRequest.event_date >= today
-    ).count()
-
-    # Count pending requests (both event and venue requests)
-    pending_event_requests = EventRequest.query.filter(
-        EventRequest.status == EventRequestStatus.PENDING
-    ).count()
     
-    pending_venue_requests = VenueRequest.query.filter(
-        VenueRequest.status == VenueRequestStatus.PENDING
-    ).count()
-    
-    total_pending = pending_event_requests + pending_venue_requests
+    if user.user_role == UserRole.ADMIN:
+        # Admin sees all system data
+        upcoming_events = EventRequest.query.filter(
+            EventRequest.status == EventRequestStatus.APPROVED,
+            EventRequest.event_date >= today
+        ).count()
 
-    # Count total venues
-    total_venues = Venue.query.count()
+        pending_event_requests = EventRequest.query.filter(
+            EventRequest.status == EventRequestStatus.PENDING
+        ).count()
+        
+        pending_venue_requests = VenueRequest.query.filter(
+            VenueRequest.status == VenueRequestStatus.PENDING
+        ).count()
+        
+        pending_booking_requests = BookingRequest.query.filter(
+            BookingRequest.status == BookingStatus.PENDING
+        ).count()
+        
+        total_pending = pending_event_requests + pending_venue_requests + pending_booking_requests
+        total_venues = Venue.query.count()
+        active_users = User.query.filter(User.is_active == True).count()
+        
+    elif user.user_role == UserRole.EVENT_ORGANIZER:
+        # Event organizer sees only their own events and venue requests
+        upcoming_events = EventRequest.query.filter(
+            EventRequest.requested_by == user.user_id,
+            EventRequest.status == EventRequestStatus.APPROVED,
+            EventRequest.event_date >= today
+        ).count()
 
-    # Count active users
-    active_users = User.query.filter(User.is_active == True).count()
+        pending_event_requests = EventRequest.query.filter(
+            EventRequest.requested_by == user.user_id,
+            EventRequest.status == EventRequestStatus.PENDING
+        ).count()
+        
+        pending_venue_requests = VenueRequest.query.filter(
+            VenueRequest.requester_id == user.user_id,
+            VenueRequest.status == VenueRequestStatus.PENDING
+        ).count()
+        
+        total_pending = pending_event_requests + pending_venue_requests
+        total_venues = Venue.query.count()
+        active_users = 0  # Not relevant for event organizers
+        
+    else:  # STUDENT
+        # Students see only their own bookings
+        upcoming_events = BookingRequest.query.filter(
+            BookingRequest.user_id == user.user_id,
+            BookingRequest.status == BookingStatus.APPROVED,
+            BookingRequest.booking_date >= today
+        ).count()
+
+        pending_booking_requests = BookingRequest.query.filter(
+            BookingRequest.user_id == user.user_id,
+            BookingRequest.status == BookingStatus.PENDING
+        ).count()
+        
+        total_pending = pending_booking_requests
+        total_venues = Venue.query.count()
+        active_users = 0  # Not relevant for students
 
     return {
         "upcoming_events": upcoming_events,

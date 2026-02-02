@@ -4,6 +4,7 @@ function EventRequestList({ limit }) {
   const [eventRequests, setEventRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   // status filter state
   const [statusFilter, setStatusFilter] = useState("all");
@@ -29,6 +30,8 @@ function EventRequestList({ limit }) {
 
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const userId = user?.user_id;
+        const role = user?.user_role;
+        setUserRole(role);
 
         if (!userId) {
           setEventRequests([]);
@@ -36,22 +39,53 @@ function EventRequestList({ limit }) {
           return;
         }
 
-        // NOTE: backend expects viewer_id
-        const response = await fetch(`/api/event-requests/?viewer_id=${userId}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
+        let response;
+        let result;
 
-        const result = await response.json().catch(() => ({}));
+        // Students fetch booking requests, others fetch event requests
+        if (role === 'Student') {
+          response = await fetch(`/api/booking-requests/?viewer_id=${userId}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          });
 
-        if (!response.ok) {
-          throw new Error(result.error || `HTTP Error! Status: ${response.status}`);
+          result = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(result.error || `HTTP Error! Status: ${response.status}`);
+          }
+
+          // Transform booking requests to match event request structure
+          const bookings = (result.booking_requests || []).map(booking => ({
+            event_id: booking.booking_id,
+            event_name: `Booking #${booking.booking_id}`,
+            event_date: booking.booking_date,
+            start_time: booking.start_time || '-',
+            end_time: booking.end_time || '-',
+            requested_venues: booking.venue_name ? [booking.venue_name] : ['-'],
+            purpose: booking.purpose || 'N/A',
+            status: booking.status
+          }));
+
+          setEventRequests(bookings);
+        } else {
+          // Event Organizers and Admins fetch event requests
+          response = await fetch(`/api/event-requests/?viewer_id=${userId}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          result = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(result.error || `HTTP Error! Status: ${response.status}`);
+          }
+
+          setEventRequests(result.event_requests || []);
         }
-
-        setEventRequests(result.event_requests || []);
       } catch (err) {
         setError(err.message);
-        console.error("Fetch aborted:", err);
+        console.error("Fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -135,10 +169,10 @@ function EventRequestList({ limit }) {
 
         <thead>
           <tr>
-            <th>Event Name</th>
+            <th>{userRole === 'Student' ? 'Booking' : 'Event Name'}</th>
             <th>Date</th>
             <th>Time</th>
-            <th>Requested Venue</th>
+            <th>{userRole === 'Student' ? 'Venue' : 'Requested Venue'}</th>
             <th>Purpose</th>
             <th>Status</th>
           </tr>
@@ -148,7 +182,7 @@ function EventRequestList({ limit }) {
           {filteredRequests.length === 0 ? (
             <tr>
               <td colSpan="6" style={{ textAlign: "center" }}>
-                No events found
+                {userRole === 'Student' ? 'No bookings found' : 'No events found'}
               </td>
             </tr>
           ) : (
