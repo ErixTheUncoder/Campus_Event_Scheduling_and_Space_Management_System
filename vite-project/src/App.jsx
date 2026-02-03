@@ -66,12 +66,20 @@ function App() {
     return children;
   };
 
+  // Determine redirect path based on user role
+  const getDefaultRoute = () => {
+    if (!user) return "/login";
+    if (user.user_role === "Student") return "/bookings";
+    if (user.user_role === "Event Organizer") return "/events";
+    return "/dashboard";
+  };
+
   return (
     <Routes>
       <Route
         path="/login"
         element={
-          user ? <Navigate to="/dashboard" replace /> :
+          user ? <Navigate to={getDefaultRoute()} replace /> :
           <div className="loginBackground">
             <LoginForm onLoginSuccess={handleLogin} />
           </div>
@@ -79,7 +87,7 @@ function App() {
       />
 
       <Route element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" replace />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
         <Route path="/dashboard" element={<DashboardContent />} />
 
         <Route
