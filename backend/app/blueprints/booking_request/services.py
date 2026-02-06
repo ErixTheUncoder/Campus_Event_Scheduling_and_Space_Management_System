@@ -306,9 +306,8 @@ def list_booking_requests(viewer_id: int | None, status: str | None = None):
         if booking.venue_available_id:
             venue_avail = VenueAvailability.query.get(booking.venue_available_id)
             if venue_avail:
-                booking_dict['start_time'] = venue_avail.start_time
-                booking_dict['end_time'] = venue_avail.end_time
-                booking_dict['purpose'] = venue_avail.purpose
+                booking_dict['start_datetime'] = venue_avail.start_datetime.isoformat() if venue_avail.start_datetime else None
+                booking_dict['end_datetime'] = venue_avail.end_datetime.isoformat() if venue_avail.end_datetime else None
                 
                 # Get venue details
                 if venue_avail.venue_id:
