@@ -60,8 +60,8 @@ def create_venue_request(payload: dict):
     if err:
         return err
 
-    if organiser.user_role != UserRole.EVENT_ORGANIZER:
-        return {"error": "Forbidden: Event Organizer only"}, 403
+    if organiser.user_role not in (UserRole.EVENT_ORGANIZER, UserRole.ADMIN):
+        return {"error": "Forbidden: Event Organizer and admin only"}, 403
 
     # validate event
     try:
@@ -73,7 +73,8 @@ def create_venue_request(payload: dict):
     if not event:
         return {"error": "Event request not found"}, 404
 
-    if event.user_id != organiser.user_id:
+    # Only check ownership if not an admin
+    if organiser.user_role != UserRole.ADMIN and event.user_id != organiser.user_id:
         return {"error": "Forbidden: Not your event request"}, 403
 
     # cannot request venue for non-pending event
