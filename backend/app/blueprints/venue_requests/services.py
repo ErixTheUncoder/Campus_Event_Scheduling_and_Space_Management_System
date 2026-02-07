@@ -195,7 +195,29 @@ def list_venue_requests(viewer_id: int, filters: dict | None = None):
             q = q.filter(VenueRequest.event_id == event_id)
 
     items = q.order_by(VenueRequest.request_date_time.desc()).all()
-    return {"venue_requests": [i.to_dict() for i in items]}, 200
+    
+    # Enrich venue requests with venue and event names
+    enriched_requests = []
+    for vr in items:
+        vr_dict = vr.to_dict()
+        
+        # Get venue name from venue_availability
+        if vr.venue_available_id:
+            venue_avail = VenueAvailability.query.get(vr.venue_available_id)
+            if venue_avail and venue_avail.venue_id:
+                venue = Venue.query.get(venue_avail.venue_id)
+                if venue:
+                    vr_dict['venue_name'] = venue.venue_name
+        
+        # Get event name
+        if vr.event_id:
+            event = EventRequest.query.get(vr.event_id)
+            if event:
+                vr_dict['event_name'] = event.event_name
+        
+        enriched_requests.append(vr_dict)
+    
+    return {"venue_requests": enriched_requests}, 200
 
 
 def decide_venue_request(request_id: int, payload: dict):
