@@ -302,6 +302,12 @@ def list_booking_requests(viewer_id: int | None, status: str | None = None):
     for booking in items:
         booking_dict = booking.to_dict()
         
+        # Get user (student) details
+        if booking.user_id:
+            user = User.query.get(booking.user_id)
+            if user:
+                booking_dict['user_name'] = user.full_name
+        
         # Get venue availability details
         if booking.venue_available_id:
             venue_avail = VenueAvailability.query.get(booking.venue_available_id)

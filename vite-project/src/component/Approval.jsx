@@ -250,7 +250,7 @@ function Approval() {
                 <tr>
                   <th>ID</th>
                   <th>Student</th>
-                  <th>Venue Available ID</th>
+                  <th>Venue</th>
                   <th>Date</th>
                   <th>Status</th>
                   <th className="col-actions">Actions</th>
@@ -260,8 +260,8 @@ function Approval() {
                 {bookingRequests.map((req) => (
                   <tr key={req.booking_id}>
                     <td>{req.booking_id}</td>
-                    <td>{req.user_id}</td>
-                    <td>{req.venue_available_id}</td>
+                    <td>{req.user_name || `User #${req.user_id}`}</td>
+                    <td>{req.venue_name || `Venue Availability #${req.venue_available_id}`}</td>
                     <td>{req.booking_date}</td>
                     <td>
                       <span className={`badge ${req.status?.toLowerCase() || "pending"}`}>
@@ -312,7 +312,7 @@ function Approval() {
                   <tr key={req.event_id}>
                     <td>{req.event_id}</td>
                     <td>{req.event_name}</td>
-                    <td>{req.user_id}</td>
+                    <td>{req.user_name || `User #${req.user_id}`}</td>
                     <td>{req.event_date}</td>
                     <td>{req.start_time} - {req.end_time}</td>
                     <td>

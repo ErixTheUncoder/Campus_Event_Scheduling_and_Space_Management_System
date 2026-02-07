@@ -147,6 +147,13 @@ def list_event_requests(viewer_id: int | None, status: str | None = None):
 
         d = e.to_dict()
         d["requested_venues"] = venue_names
+        
+        # Get organizer (user) details
+        if e.user_id:
+            user = User.query.get(e.user_id)
+            if user:
+                d['user_name'] = user.full_name
+        
         result.append(d)
 
     return {"event_requests": result}, 200
