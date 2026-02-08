@@ -130,8 +130,8 @@ def create_booking_request(payload: dict):
     if err:
         return err
 
-    if user.user_role != UserRole.STUDENT:
-        return {"error": "Forbidden: Only students can create booking requests"}, 403
+    if user.user_role not in (UserRole.STUDENT, UserRole.ADMIN):
+        return {"error": "Forbidden: Only students and admins can create booking requests"}, 403
 
     # booking date validation
     booking_date_str = (payload.get("booking_date") or "").strip()
