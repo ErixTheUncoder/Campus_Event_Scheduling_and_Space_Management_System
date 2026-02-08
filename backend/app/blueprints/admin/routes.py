@@ -55,7 +55,8 @@ def admin_change_role(user_id):
 
 @admin_bp.get("/dashboard/stats")
 def admin_dashboard_stats():
-    """Get dashboard statistics for admin"""
-    admin_id = request.args.get("admin_id", type=int)
-    resp, code = get_dashboard_stats(admin_id)
+    """Get dashboard statistics - accessible by Admin, Event_Organizer, and Student"""
+    # Accept both user_id and admin_id (backwards compatible)
+    user_id = request.args.get("user_id", type=int) or request.args.get("admin_id", type=int)
+    resp, code = get_dashboard_stats(user_id)
     return jsonify(resp), code

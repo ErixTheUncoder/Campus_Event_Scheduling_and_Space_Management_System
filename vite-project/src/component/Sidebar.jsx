@@ -28,7 +28,7 @@ const Sidebar = ({ user }) => {
 
   const allMenu = useMemo(
     () => [
-      { type: "link", name: "Dashboard", path: "/dashboard", roles: ["Admin", "Event Organizer", "Student"] },
+      { type: "link", name: "Dashboard", path: "/dashboard", roles: ["Admin"] },
 
       // Admin combined calendar (events + bookings) - single link (no submenu)
       { type: "link", name: "Schedule Calendar", path: "/calendar", roles: ["Admin"] },
@@ -97,7 +97,7 @@ const Sidebar = ({ user }) => {
       },
 
       { type: "link", name: "User Management", path: "/users", roles: ["Admin"] },
-      { type: "link", name: "Settings", path: "/settings", roles: ["Admin", "Event Organizer", "Student"] },
+      { type: "link", name: "Audit Log", path: "/audit-log", roles: ["Admin"] },
     ],
     []
   );

@@ -42,8 +42,8 @@ def create_event_request(payload: dict):
     if err:
         return err
 
-    if user.user_role != UserRole.EVENT_ORGANIZER:
-        return {"error": "Forbidden: Only Event Organizers can create event requests"}, 403
+    if user.user_role not in (UserRole.EVENT_ORGANIZER, UserRole.ADMIN):
+        return {"error": "Forbidden: Only Event Organizers and admins can create event requests"}, 403
 
     event_name = (payload.get("event_name") or "").strip()
     event_date_str = (payload.get("event_date") or "").strip()
@@ -147,6 +147,13 @@ def list_event_requests(viewer_id: int | None, status: str | None = None):
 
         d = e.to_dict()
         d["requested_venues"] = venue_names
+        
+        # Get organizer (user) details
+        if e.user_id:
+            user = User.query.get(e.user_id)
+            if user:
+                d['user_name'] = user.full_name
+        
         result.append(d)
 
     return {"event_requests": result}, 200

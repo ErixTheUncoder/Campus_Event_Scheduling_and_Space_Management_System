@@ -88,10 +88,6 @@ function Venue() {
 
   return (
     <>
-      <div className="tableHeader">
-        <h2>Venues Available</h2>
-        <button className="add-Button">Edit</button>
-      </div>
       <div className="table-container">
         <table>
           <thead>

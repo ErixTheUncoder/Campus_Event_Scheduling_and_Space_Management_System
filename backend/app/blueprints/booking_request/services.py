@@ -130,8 +130,8 @@ def create_booking_request(payload: dict):
     if err:
         return err
 
-    if user.user_role != UserRole.STUDENT:
-        return {"error": "Forbidden: Only students can create booking requests"}, 403
+    if user.user_role not in (UserRole.STUDENT, UserRole.ADMIN):
+        return {"error": "Forbidden: Only students and admins can create booking requests"}, 403
 
     # booking date validation
     booking_date_str = (payload.get("booking_date") or "").strip()
@@ -296,7 +296,34 @@ def list_booking_requests(viewer_id: int | None, status: str | None = None):
         q = q.filter(BookingRequest.status == status_enum)
 
     items = q.order_by(BookingRequest.request_date_time.desc()).all()
-    return {"booking_requests": [b.to_dict() for b in items]}, 200
+    
+    # Enrich booking data with venue and time information
+    enriched_bookings = []
+    for booking in items:
+        booking_dict = booking.to_dict()
+        
+        # Get user (student) details
+        if booking.user_id:
+            user = User.query.get(booking.user_id)
+            if user:
+                booking_dict['user_name'] = user.full_name
+        
+        # Get venue availability details
+        if booking.venue_available_id:
+            venue_avail = VenueAvailability.query.get(booking.venue_available_id)
+            if venue_avail:
+                booking_dict['start_datetime'] = venue_avail.start_datetime.isoformat() if venue_avail.start_datetime else None
+                booking_dict['end_datetime'] = venue_avail.end_datetime.isoformat() if venue_avail.end_datetime else None
+                
+                # Get venue details
+                if venue_avail.venue_id:
+                    venue = Venue.query.get(venue_avail.venue_id)
+                    if venue:
+                        booking_dict['venue_name'] = venue.venue_name
+        
+        enriched_bookings.append(booking_dict)
+    
+    return {"booking_requests": enriched_bookings}, 200
 
 
 def get_booking_request(booking_id: int, viewer_id: int | None):

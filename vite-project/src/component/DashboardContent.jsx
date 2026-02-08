@@ -12,6 +12,7 @@ const DashboardContent = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -25,17 +26,19 @@ const DashboardContent = () => {
         }
 
         const user = JSON.parse(userStr);
+        setUserRole(user.user_role);
         
-        // Check if user is admin
-        if (user.user_role !== 'Admin') {
-          setError('Access denied. Admin only.');
+        // Check if user has access to dashboard
+        const allowedRoles = ['Admin', 'Student', 'Event_Organizer'];
+        if (!allowedRoles.includes(user.user_role)) {
+          setError('Access denied.');
           setLoading(false);
           return;
         }
 
         // Fetch dashboard stats
         const response = await fetch(
-          `http://localhost:5000/api/admin/dashboard/stats?admin_id=${user.user_id}`
+          `http://localhost:5000/api/admin/dashboard/stats?user_id=${user.user_id}`
         );
 
         if (!response.ok) {
@@ -69,18 +72,39 @@ const DashboardContent = () => {
     );
   }
 
+  // Customize labels based on user role
+  const getUpcomingLabel = () => {
+    if (userRole === 'Student') return 'My Upcoming Bookings';
+    if (userRole === 'Event_Organizer') return 'My Upcoming Events';
+    return 'Upcoming Events';
+  };
+
+  const getPendingLabel = () => {
+    if (userRole === 'Student') return 'My Pending Bookings';
+    if (userRole === 'Event_Organizer') return 'My Pending Requests';
+    return 'Pending Requests';
+  };
+
+  const getRecentLabel = () => {
+    if (userRole === 'Student') return 'My Recent Bookings';
+    if (userRole === 'Event_Organizer') return 'My Recent Events';
+    return 'Recent Bookings';
+  };
+
   return (
     <>
       <div className="stats-grid">
-        <StatCard title="Upcoming Events" value={stats.upcoming_events} />
-        <StatCard title="Pending Requests" value={stats.pending_requests} />
+        <StatCard title={getUpcomingLabel()} value={stats.upcoming_events} />
+        <StatCard title={getPendingLabel()} value={stats.pending_requests} />
         <StatCard title="Total Venues" value={stats.total_venues} />
-        <StatCard title="Active Users" value={stats.active_users} />
+        {userRole === 'Admin' && (
+          <StatCard title="Active Users" value={stats.active_users} />
+        )}
       </div>
 
       <div className="table-container">
         <div style={{display:'flex', justifyContent:'space-between', marginBottom:'1rem'}}>
-          <h3>Recent Bookings</h3>
+          <h3>{getRecentLabel()}</h3>
         </div>
         <BookingEvents limit={5} />
       </div>
